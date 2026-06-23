@@ -4,6 +4,13 @@ profile wifi_thermostat_manager flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   #include <abstractions/python>
 
+  # s6-overlay v3 init system (container entrypoint = /init)
+  /init ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/s6-overlay/** r,
+  /run/** rwix,
+
   # Startup
   /run.sh ix,
   /usr/bin/python3 ix,
@@ -16,7 +23,6 @@ profile wifi_thermostat_manager flags=(attach_disconnected,mediate_deleted) {
   # Application
   /app/** r,
 
-  # bashio / s6
+  # bashio
   /usr/lib/bashio/** ix,
-  /run/{s6,s6-rc*,service}/** ix,
 }
