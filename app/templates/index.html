@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>WiFi Thermostat Manager</title>
+  <link rel="stylesheet" href="static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <h1>Thermostats</h1>
+        <p class="subtitle">Every room, one panel</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="mqtt-pill" class="pill pill-muted" title="Home Assistant link status">
+        <span class="dot"></span><span id="mqtt-label">checking…</span>
+      </span>
+      <button id="add-btn" class="btn btn-primary">Add thermostat</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="grid" class="grid" aria-live="polite"></section>
+
+    <!-- Empty state -->
+    <section id="empty" class="empty hidden">
+      <div class="empty-dial" aria-hidden="true"></div>
+      <h2>No thermostats yet</h2>
+      <p>Add your first WiFi thermostat to start controlling it here and in Home Assistant.</p>
+      <button class="btn btn-primary" data-add>Add thermostat</button>
+    </section>
+  </main>
+
+  <!-- Add / edit modal -->
+  <div id="modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modal-title">Add thermostat</h2>
+        <button class="icon-btn" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="field">
+        <label for="type-select">Device type</label>
+        <select id="type-select"></select>
+      </div>
+      <form id="device-form" class="form-fields"></form>
+      <p id="form-error" class="form-error hidden"></p>
+      <div class="modal-foot">
+        <button id="delete-btn" class="btn btn-ghost danger hidden">Remove</button>
+        <button class="btn btn-ghost" data-close>Cancel</button>
+        <button id="save-btn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <template id="card-tpl">
+    <article class="card" data-state="off">
+      <div class="card-head">
+        <h3 class="card-name"></h3>
+        <button class="icon-btn card-menu" aria-label="Edit thermostat">&#8230;</button>
+      </div>
+      <div class="dial">
+        <svg viewBox="0 0 200 200" class="dial-svg">
+          <path class="dial-track" />
+          <path class="dial-fill" />
+          <circle class="dial-marker" r="5" />
+        </svg>
+        <div class="dial-center">
+          <div class="readout"><span class="readout-num">--</span><span class="readout-unit">°</span></div>
+          <div class="readout-label">current</div>
+        </div>
+      </div>
+      <div class="setpoint">
+        <button class="step-btn step-down" aria-label="Lower target">&minus;</button>
+        <div class="setpoint-value"><span class="target-num">--</span><span class="target-unit">°C</span><span class="setpoint-label">target</span></div>
+        <button class="step-btn step-up" aria-label="Raise target">+</button>
+      </div>
+      <div class="modes" role="group" aria-label="Mode"></div>
+    </article>
+  </template>
+
+  <script src="static/app.js"></script>
+</body>
+</html>

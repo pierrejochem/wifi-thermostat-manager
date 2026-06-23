@@ -1,0 +1,11 @@
+# Local dev broker for WiFi Thermostat Manager.
+# Replaces the Supervisor-managed Mosquitto add-on used in production.
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: wtm-dev-mqtt
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # websockets (optional, for browser MQTT clients)
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro

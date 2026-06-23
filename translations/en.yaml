@@ -1,0 +1,29 @@
+configuration:
+  mqtt_host:
+    name: MQTT host
+    description: >-
+      Leave blank to auto-detect the Mosquitto broker offered by the Supervisor.
+      Set a hostname/IP only if you run an external broker.
+  mqtt_port:
+    name: MQTT port
+    description: Broker port. Ignored when the host is auto-detected.
+  mqtt_username:
+    name: MQTT username
+    description: Only needed when using a manually configured external broker.
+  mqtt_password:
+    name: MQTT password
+    description: Only needed when using a manually configured external broker.
+  discovery_prefix:
+    name: Discovery prefix
+    description: >-
+      Home Assistant MQTT discovery prefix. Keep "homeassistant" unless you
+      changed it in the MQTT integration.
+  base_topic:
+    name: Base topic
+    description: Root MQTT topic used for thermostat state and commands.
+  poll_interval:
+    name: Poll interval (seconds)
+    description: How often each thermostat is read for fresh temperature/state.
+  log_level:
+    name: Log level
+    description: Verbosity of the add-on log.

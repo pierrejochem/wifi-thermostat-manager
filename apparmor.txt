@@ -1,0 +1,22 @@
+#include <tunables/global>
+
+profile wifi_thermostat_manager flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/python>
+
+  # Startup
+  /run.sh ix,
+  /usr/bin/python3 ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+
+  # Persistent storage
+  /data/** rw,
+
+  # Application
+  /app/** r,
+
+  # bashio / s6
+  /usr/lib/bashio/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+}

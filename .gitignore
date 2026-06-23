@@ -1,0 +1,31 @@
+# --- Local dev environment -------------------------------------------------
+dev/.venv/
+dev/data/
+*.log
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- IDE / editors ---------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- OS --------------------------------------------------------------------
+.DS_Store
+Thumbs.db

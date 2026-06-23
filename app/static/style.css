@@ -1,0 +1,225 @@
+/* WiFi Thermostat Manager — dashboard
+   Instrument-cluster aesthetic: precise readouts, an ember glow when a room is
+   calling for heat, cooling to steel-blue when idle. Adapts to the Home
+   Assistant theme via prefers-color-scheme. */
+
+:root {
+  --ember: #f2683c;
+  --ember-soft: #fbe3d6;
+  --steel: #4c8fb5;
+  --steel-soft: #dceaf1;
+  --ink: #1c2128;
+  --muted: #6b7480;
+  --line: #e4e7eb;
+  --surface: #ffffff;
+  --surface-2: #f6f7f9;
+  --bg: #eef0f3;
+  --shadow: 0 1px 2px rgba(18, 24, 33, .06), 0 8px 24px rgba(18, 24, 33, .06);
+  --radius: 18px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ember: #ff7a4d;
+    --ember-soft: #3a241c;
+    --steel: #6fb4d8;
+    --steel-soft: #1d2a32;
+    --ink: #e8ebef;
+    --muted: #9aa3ad;
+    --line: #2a2f37;
+    --surface: #1a1d23;
+    --surface-2: #20242b;
+    --bg: #121419;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .35);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Top bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 14px; height: 36px; border-radius: 7px;
+  background: linear-gradient(var(--steel), var(--ember));
+  flex: 0 0 auto;
+}
+.brand-text h1 { margin: 0; font-size: 1.15rem; letter-spacing: -.01em; }
+.subtitle { margin: 2px 0 0; font-size: .8rem; color: var(--muted); }
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: .78rem; padding: 6px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+}
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pill-ok { color: var(--ink); }
+.pill-ok .dot { background: #34b27b; }
+.pill-bad .dot { background: var(--ember); }
+
+/* ---- Buttons ---- */
+.btn {
+  font: inherit; font-weight: 600; font-size: .88rem;
+  border: 1px solid transparent; border-radius: 10px;
+  padding: 9px 16px; cursor: pointer; transition: transform .08s ease, background .15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--ink); color: var(--surface); }
+.btn-primary:hover { background: var(--ember); }
+.btn-ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn-ghost:hover { background: var(--surface-2); }
+.icon-btn {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+/* ---- Grid ---- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* ---- Card ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  --accent: var(--steel);
+  --accent-soft: var(--steel-soft);
+  position: relative;
+  overflow: hidden;
+}
+.card[data-state="heating"] { --accent: var(--ember); --accent-soft: var(--ember-soft); }
+.card[data-state="off"], .card[data-state="unavailable"] { opacity: .72; }
+.card[data-state="heating"]::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(120% 80% at 50% 0%, var(--ember-soft), transparent 60%);
+  opacity: .8; pointer-events: none;
+  animation: ember 3.5s ease-in-out infinite;
+}
+@keyframes ember { 0%,100% { opacity: .45; } 50% { opacity: .85; } }
+
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.card-name { margin: 0; font-size: 1rem; font-weight: 650; letter-spacing: -.01em; }
+
+/* ---- Dial ---- */
+.dial { position: relative; width: 100%; aspect-ratio: 1; max-width: 200px; margin: 0 auto; }
+.dial-svg { width: 100%; height: 100%; }
+.dial-track { fill: none; stroke: var(--surface-2); stroke-width: 12; stroke-linecap: round; }
+.dial-fill { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+  transition: stroke-dashoffset .5s ease, stroke .3s; }
+.dial-marker { fill: var(--accent); stroke: var(--surface); stroke-width: 3; transition: cx .5s, cy .5s; }
+
+.dial-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+}
+.readout { font-family: var(--mono); font-size: 2.7rem; font-weight: 600; line-height: 1;
+  letter-spacing: -.03em; display: flex; align-items: flex-start; }
+.readout-unit { font-size: 1.3rem; color: var(--accent); margin-top: .15em; }
+.readout-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+
+/* ---- Setpoint ---- */
+.setpoint { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.step-btn {
+  width: 44px; height: 44px; border-radius: 12px; flex: 0 0 auto;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  font-size: 1.4rem; line-height: 1; cursor: pointer; transition: transform .08s, background .15s;
+}
+.step-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.step-btn:active { transform: scale(.94); }
+.setpoint-value { text-align: center; line-height: 1.1; }
+.target-num { font-family: var(--mono); font-size: 1.6rem; font-weight: 600; }
+.target-unit { font-size: .9rem; color: var(--muted); margin-left: 1px; }
+.setpoint-label { display: block; font-size: .66rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-top: 2px; }
+
+/* ---- Mode switch ---- */
+.modes { display: flex; gap: 6px; background: var(--surface-2); padding: 4px; border-radius: 12px; }
+.mode-opt {
+  flex: 1; border: none; background: transparent; color: var(--muted);
+  font: inherit; font-size: .82rem; font-weight: 600; padding: 8px 4px; border-radius: 9px;
+  cursor: pointer; text-transform: capitalize; transition: background .15s, color .15s;
+}
+.mode-opt:hover { color: var(--ink); }
+.mode-opt[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.card[data-state="heating"] .mode-opt[aria-pressed="true"] { color: var(--ember); }
+
+/* ---- Empty state ---- */
+.empty { text-align: center; padding: 64px 20px; color: var(--muted); }
+.empty h2 { color: var(--ink); margin: 18px 0 6px; }
+.empty p { max-width: 380px; margin: 0 auto 22px; }
+.empty-dial {
+  width: 96px; height: 96px; margin: 0 auto; border-radius: 50%;
+  border: 10px solid var(--line); border-top-color: var(--ember); border-right-color: var(--steel);
+}
+
+/* ---- Modal ---- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(12, 15, 20, .5);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 20;
+  backdrop-filter: blur(2px);
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+.modal-head, .modal-foot { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; }
+.modal-head { border-bottom: 1px solid var(--line); }
+.modal-head h2 { margin: 0; font-size: 1.05rem; }
+.modal-foot { border-top: 1px solid var(--line); gap: 10px; justify-content: flex-end; }
+.form-fields, .field { padding: 0 20px; }
+.field, .form-fields .field { margin-top: 14px; }
+.field:first-child { margin-top: 18px; }
+.field label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; font: inherit; padding: 10px 12px; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--accent, var(--steel)); outline-offset: 1px; border-color: transparent; }
+.field .hint { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+.form-error { margin: 14px 20px 0; padding: 10px 12px; border-radius: 10px;
+  background: var(--ember-soft); color: var(--ember); font-size: .82rem; }
+.modal-foot .btn-ghost.danger { margin-right: auto; color: var(--ember); border-color: transparent; }
+
+.hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 520px) {
+  main { padding: 16px; }
+  .grid { grid-template-columns: 1fr; }
+  .topbar { padding: 14px 16px; }
+}
