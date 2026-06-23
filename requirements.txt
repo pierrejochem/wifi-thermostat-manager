@@ -2,3 +2,6 @@ Flask==3.0.3
 paho-mqtt==1.6.1
 tinytuya==1.15.1
 requests==2.32.3
+# Reused to import devices straight from Home Assistant's Tuya integration.
+# Unpinned paho-mqtt dep is satisfied by our 1.6.1 pin above (legacy callback API).
+tuya-device-sharing-sdk==0.2.8

@@ -170,6 +170,86 @@ def refresh_thermostat(thermostat_id: str):
     return jsonify(thermostat=device.as_dict())
 
 
+# --- import from Home Assistant -------------------------------------------
+# Reuse the credentials the official HA Tuya integration already stored so the
+# user can add thermostats with zero manual input (no device id / local key).
+import ha_import  # noqa: E402  (kept local to this feature)
+import config_store  # noqa: E402
+
+
+def _already_added_tuya_ids() -> set[str]:
+    """Tuya ``device_id``s already stored, so we can flag duplicates."""
+    return {
+        d["device_id"]
+        for d in config_store.list_all()
+        if d.get("type") == "tuya" and d.get("device_id")
+    }
+
+
+def _ha_error_response(err: "ha_import.HaImportError"):
+    status = {
+        ha_import.TuyaEntryNotFound: 404,
+        ha_import.TuyaTokenError: 409,
+        ha_import.TuyaSdkMissing: 500,
+    }.get(type(err), 502)
+    return jsonify(error=str(err)), status
+
+
+@app.get("/api/ha/status")
+def ha_status():
+    """Cheap check (file read only) of whether HA has a Tuya integration."""
+    try:
+        ha_import.read_tuya_entry()
+    except ha_import.TuyaEntryNotFound:
+        return jsonify(found=False)
+    except ha_import.HaImportError as err:
+        return jsonify(found=False, error=str(err))
+    return jsonify(found=True)
+
+
+@app.get("/api/ha/devices")
+def ha_devices():
+    try:
+        devices = ha_import.fetch_thermostats(
+            already_added_ids=_already_added_tuya_ids()
+        )
+    except ha_import.HaImportError as err:
+        return _ha_error_response(err)
+    return jsonify(devices=devices)
+
+
+@app.post("/api/ha/import")
+def ha_import_devices():
+    body = request.get_json(force=True, silent=True) or {}
+    wanted = list(body.get("device_ids") or [])
+    if not wanted:
+        return jsonify(error="device_ids (list) is required"), 400
+    try:
+        # Re-fetch so we import fresh local keys / addresses.
+        devices = ha_import.fetch_thermostats(
+            already_added_ids=_already_added_tuya_ids()
+        )
+    except ha_import.HaImportError as err:
+        return _ha_error_response(err)
+
+    by_id = {d["device_id"]: d for d in devices}
+    imported, skipped, errors = [], [], []
+    for device_id in wanted:
+        item = by_id.get(device_id)
+        if item is None:
+            errors.append({"device_id": device_id, "error": "not found in Home Assistant"})
+            continue
+        if item["already_added"]:
+            skipped.append(device_id)
+            continue
+        try:
+            created = manager.add_device(ha_import.to_definition(item))
+            imported.append({"device_id": device_id, "id": created["id"], "name": created["name"]})
+        except (KeyError, ValueError) as err:
+            errors.append({"device_id": device_id, "error": str(err)})
+    return jsonify(imported=imported, skipped=skipped, errors=errors)
+
+
 # --- shutdown --------------------------------------------------------------
 def _shutdown(*_):
     log.info("Shutting down...")

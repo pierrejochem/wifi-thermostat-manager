@@ -283,6 +283,105 @@ async function deleteDevice() {
   }
 }
 
+/* ---------- Import from Home Assistant ---------- */
+const haModal = document.getElementById("ha-modal");
+const haStatus = document.getElementById("ha-status");
+const haList = document.getElementById("ha-device-list");
+const haError = document.getElementById("ha-error");
+const haImportSelected = document.getElementById("ha-import-selected");
+
+function haSelectedIds() {
+  return [...haList.querySelectorAll("input[type=checkbox]:checked:not(:disabled)")]
+    .map((cb) => cb.value);
+}
+
+function updateHaImportButton() {
+  haImportSelected.disabled = haSelectedIds().length === 0;
+}
+
+function renderHaDevices(devices) {
+  haList.innerHTML = "";
+  if (!devices.length) {
+    haStatus.textContent = "No thermostats found in Home Assistant.";
+    return;
+  }
+  haStatus.textContent = `${devices.length} thermostat(s) found.`;
+  devices.forEach((d) => {
+    const row = document.createElement("label");
+    row.className = "ha-row" + (d.already_added ? " ha-added" : "");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = d.device_id;
+    cb.disabled = !!d.already_added;
+    cb.addEventListener("change", updateHaImportButton);
+    row.appendChild(cb);
+
+    const dot = document.createElement("span");
+    dot.className = "ha-dot " + (d.online ? "ha-online" : "ha-offline");
+    dot.title = d.online ? "online" : "offline";
+    row.appendChild(dot);
+
+    const name = document.createElement("span");
+    name.className = "ha-name";
+    name.textContent = d.name;
+    row.appendChild(name);
+
+    if (d.already_added) {
+      const tag = document.createElement("span");
+      tag.className = "ha-tag";
+      tag.textContent = "already added";
+      row.appendChild(tag);
+    }
+    haList.appendChild(row);
+  });
+  updateHaImportButton();
+}
+
+async function openHaModal() {
+  haError.classList.add("hidden");
+  haList.innerHTML = "";
+  haStatus.textContent = "Loading…";
+  haImportSelected.disabled = true;
+  haModal.classList.remove("hidden");
+  try {
+    const data = await API.get("api/ha/devices");
+    renderHaDevices(data.devices || []);
+  } catch (err) {
+    haStatus.textContent = "";
+    haError.textContent = err.message;
+    haError.classList.remove("hidden");
+  }
+}
+
+function closeHaModal() {
+  haModal.classList.add("hidden");
+}
+
+async function importSelected() {
+  const ids = haSelectedIds();
+  if (!ids.length) return;
+  haError.classList.add("hidden");
+  haImportSelected.disabled = true;
+  try {
+    const res = await API.send("api/ha/import", "POST", { device_ids: ids });
+    if (res.errors && res.errors.length) {
+      haError.textContent =
+        `Imported ${res.imported.length}, but ${res.errors.length} failed: ` +
+        res.errors.map((e) => e.device_id).join(", ");
+      haError.classList.remove("hidden");
+    } else {
+      closeHaModal();
+    }
+    await refresh();
+  } catch (err) {
+    haError.textContent = err.message;
+    haError.classList.remove("hidden");
+  } finally {
+    updateHaImportButton();
+  }
+}
+
 /* ---------- Status + polling ---------- */
 const mqttPill = document.getElementById("mqtt-pill");
 const mqttLabel = document.getElementById("mqtt-label");
@@ -318,7 +417,15 @@ document.getElementById("delete-btn").addEventListener("click", deleteDevice);
 document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeModal));
 modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 typeSelect.addEventListener("change", () => renderForm(typeSelect.value));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+document.getElementById("ha-import-btn").addEventListener("click", openHaModal);
+document.getElementById("ha-import-selected").addEventListener("click", importSelected);
+document.querySelectorAll("[data-ha-close]").forEach((b) => b.addEventListener("click", closeHaModal));
+haModal.addEventListener("click", (e) => { if (e.target === haModal) closeHaModal(); });
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { closeModal(); closeHaModal(); }
+});
 
 (async function init() {
   try {

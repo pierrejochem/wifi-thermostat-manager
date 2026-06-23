@@ -19,6 +19,7 @@
       <span id="mqtt-pill" class="pill pill-muted" title="Home Assistant link status">
         <span class="dot"></span><span id="mqtt-label">checking…</span>
       </span>
+      <button id="ha-import-btn" class="btn btn-ghost">Import from Home Assistant</button>
       <button id="add-btn" class="btn btn-primary">Add thermostat</button>
     </div>
   </header>
@@ -52,6 +53,24 @@
         <button id="delete-btn" class="btn btn-ghost danger hidden">Remove</button>
         <button class="btn btn-ghost" data-close>Cancel</button>
         <button id="save-btn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import-from-Home-Assistant modal -->
+  <div id="ha-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ha-modal-title">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="ha-modal-title">Import from Home Assistant</h2>
+        <button class="icon-btn" data-ha-close aria-label="Close">&times;</button>
+      </div>
+      <p class="ha-hint">Thermostats from your Home Assistant Tuya integration. Pick the ones to add — no Device ID or Local Key needed.</p>
+      <p id="ha-status" class="ha-status">Loading…</p>
+      <div id="ha-device-list" class="ha-list"></div>
+      <p id="ha-error" class="form-error hidden"></p>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-ha-close>Cancel</button>
+        <button id="ha-import-selected" class="btn btn-primary" disabled>Import selected</button>
       </div>
     </div>
   </div>

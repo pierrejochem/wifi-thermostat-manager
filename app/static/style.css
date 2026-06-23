@@ -223,3 +223,22 @@ main { padding: 24px; max-width: 1200px; margin: 0 auto; }
   .grid { grid-template-columns: 1fr; }
   .topbar { padding: 14px 16px; }
 }
+
+/* ---- Import-from-Home-Assistant modal ---- */
+.ha-hint { margin: 0 0 12px; font-size: .85rem; color: var(--muted); }
+.ha-status { margin: 0 0 10px; font-size: .85rem; color: var(--ink); }
+.ha-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.ha-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-2); cursor: pointer;
+}
+.ha-row.ha-added { opacity: .55; cursor: default; }
+.ha-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ha-online { background: #34b27b; }
+.ha-offline { background: var(--muted); }
+.ha-name { flex: 1; }
+.ha-tag {
+  font-size: .72rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px;
+}
