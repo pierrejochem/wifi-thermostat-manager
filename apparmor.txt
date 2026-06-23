@@ -4,25 +4,25 @@ profile wifi_thermostat_manager flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   #include <abstractions/python>
 
-  # s6-overlay v3 init system (container entrypoint = /init)
-  /init ix,
-  /package/** ix,
-  /command/** ix,
-  /etc/s6-overlay/** r,
+  # s6-overlay v3 init system. /init and the s6 binaries are SCRIPTS, so the
+  # interpreter must READ them (r), not just execute (ix).
+  /init rix,
+  /package/** rix,
+  /command/** rix,
+  /etc/s6-overlay/** rix,
   /run/** rwix,
 
-  # Startup
-  /run.sh ix,
-  /usr/bin/python3 ix,
-  /bin/** ix,
-  /usr/bin/** ix,
+  # Startup (run.sh shebang chain: with-contenv -> bashio -> run.sh)
+  /run.sh rix,
+  /usr/bin/** rix,
+  /bin/** rix,
+
+  # bashio (bash library scripts, must be readable)
+  /usr/lib/bashio/** rix,
 
   # Persistent storage
   /data/** rw,
 
   # Application
   /app/** r,
-
-  # bashio
-  /usr/lib/bashio/** ix,
 }
