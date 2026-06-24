@@ -1,5 +1,7 @@
 # WiFi Thermostat Manager — Documentation
 
+![Dashboard](https://raw.githubusercontent.com/pierrejochem/wifi-thermostat-manager/main/images/screenshot.png)
+
 ## Configuration options
 
 | Option | Default | Description |
@@ -11,6 +13,15 @@
 | `base_topic` | `wtm` | Root topic for state/commands. |
 | `poll_interval` | `30` | Seconds between device reads. |
 | `log_level` | `info` | `debug`, `info`, `warning` or `error`. |
+| `extra_thermostat_categories` | _(empty)_ | Comma-separated Tuya categories to also treat as thermostats when importing (for devices reporting an unusual category). |
+
+## Import from Home Assistant
+
+If the official **Tuya** integration is already set up, click **Import from
+Home Assistant** to add your thermostats with no manual entry — the add-on reads
+the devices (with their local keys, DP map and temperature scale) from every
+linked Tuya account. Live local control still requires the device to be
+reachable on the LAN.
 
 ## MQTT topic layout
 
