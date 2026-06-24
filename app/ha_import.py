@@ -244,6 +244,21 @@ def _parse_value_desc(raw: Any) -> dict[str, Any]:
     return {}
 
 
+def _value_spec(entry: Any) -> dict[str, Any]:
+    """Extract the value spec dict from a status_range entry.
+
+    The tuya_sharing ``DeviceStatusRange`` is an object whose JSON spec lives in
+    the ``values`` attribute; tests/other shapes may use a dict with ``values``
+    or ``value``. Normalize all of them to a parsed dict.
+    """
+    if entry is None:
+        return {}
+    raw = getattr(entry, "values", None)
+    if raw is None and isinstance(entry, dict):
+        raw = entry.get("values") or entry.get("value")
+    return _parse_value_desc(raw)
+
+
 def _derive_tuya_config(device: Any) -> dict[str, Any]:
     """Derive DP map, temperature scale and limits from the cloud metadata.
 
@@ -256,7 +271,11 @@ def _derive_tuya_config(device: Any) -> dict[str, Any]:
 
     code_to_dp: dict[str, str] = {}
     for dp_id, info in strategy.items():
-        code = (info or {}).get("status_code")
+        # local_strategy entries are plain dicts, but stay robust to objects.
+        if isinstance(info, dict):
+            code = info.get("status_code")
+        else:
+            code = getattr(info, "status_code", None)
         if code and code not in code_to_dp:
             code_to_dp[code] = str(dp_id)
 
@@ -281,7 +300,7 @@ def _derive_tuya_config(device: Any) -> dict[str, Any]:
         out["dps"] = dps
 
     # Temperature scale + limits come from the target setpoint's spec.
-    desc = _parse_value_desc((status_range.get(tgt_code) or {}).get("value")) if tgt_code else {}
+    desc = _value_spec(status_range.get(tgt_code)) if (tgt_code and hasattr(status_range, "get")) else {}
     scale = desc.get("scale")
     if scale is not None:
         try:

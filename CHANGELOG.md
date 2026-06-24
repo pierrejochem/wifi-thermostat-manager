@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.7
+- Fix crash on import (`'DeviceStatusRange' object has no attribute 'get'`):
+  read the value spec from the SDK object's `values` attribute instead of
+  assuming a plain dict.
+- Modernize the dashboard UI: Plus Jakarta Sans typography, glass top bar,
+  softer depth and card hover, segmented mode control, visible focus rings.
+
 ## 1.1.6
 - Auto-configure imported Tuya thermostats from the cloud metadata: derive the
   DP map (current/target/mode/power), temperature divisor and min/max/step from

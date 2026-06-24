@@ -26,9 +26,15 @@ TRV_STRATEGY = {
     "24": {"status_code": "temp_current"},
     "40": {"status_code": "child_lock"},
 }
+# Mirrors tuya_sharing.device.DeviceStatusRange: an object whose JSON spec is
+# in the `values` attribute (NOT a dict with `.get`).
+def _status_range(code, spec):
+    return SimpleNamespace(code=code, type="Integer", values=spec, report_type=None)
+
+
 TRV_STATUS_RANGE = {
-    "temp_set": {"value": '{"unit":"\\u2103","min":50,"max":350,"scale":1,"step":5}'},
-    "temp_current": {"value": '{"unit":"\\u2103","min":-300,"max":1000,"scale":1,"step":5}'},
+    "temp_set": _status_range("temp_set", '{"unit":"\\u2103","min":50,"max":350,"scale":1,"step":5}'),
+    "temp_current": _status_range("temp_current", '{"unit":"\\u2103","min":-300,"max":1000,"scale":1,"step":5}'),
 }
 
 
