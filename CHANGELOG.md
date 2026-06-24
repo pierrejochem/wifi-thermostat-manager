@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+- Fix add-on update being blocked: use the legacy `homeassistant_config:ro`
+  map syntax for wider Supervisor compatibility (the object form was rejected
+  by older Supervisor, greying out the Update button).
+
 ## 1.1.1
 - Add additional thermostat categories
 
