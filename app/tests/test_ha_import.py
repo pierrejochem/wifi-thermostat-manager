@@ -20,8 +20,9 @@ def _fake_device(device_id, category, name="Device", local_key="key", ip="1.2.3.
 class _FakeManager:
     """Stand-in for tuya_sharing.Manager."""
 
-    def __init__(self, devices, raise_on_update=None):
+    def __init__(self, devices, raise_on_update=None, homes=1):
         self.device_map = {d.id: d for d in devices}
+        self.user_homes = list(range(homes))
         self._raise = raise_on_update
         self.refreshed = False
 
@@ -73,6 +74,18 @@ def test_read_tuya_entry_missing_fields(tmp_path):
     path = _write_entries(tmp_path, [{"domain": "tuya", "data": {"user_code": "uc"}}])
     with pytest.raises(ha_import.HaImportError):
         ha_import.read_tuya_entry(path)
+
+
+def test_read_tuya_entries_returns_all(tmp_path):
+    e1 = {**TUYA_DATA, "terminal_id": "t1"}
+    e2 = {**TUYA_DATA, "terminal_id": "t2"}
+    path = _write_entries(tmp_path, [
+        {"domain": "tuya", "data": e1},
+        {"domain": "hue", "data": {}},
+        {"domain": "tuya", "data": e2},
+    ])
+    entries = ha_import.read_tuya_entries(path)
+    assert [e["terminal_id"] for e in entries] == ["t1", "t2"]
 
 
 # --- fetch_thermostats ------------------------------------------------------
@@ -131,6 +144,43 @@ def test_fetch_token_error_maps(tmp_path, monkeypatch):
     monkeypatch.setattr(ha_import, "_build_manager", lambda creds: mgr)
     with pytest.raises(ha_import.TuyaTokenError):
         ha_import.fetch_thermostats(path)
+
+
+def test_discover_aggregates_multiple_entries(tmp_path, monkeypatch):
+    # Two linked Tuya accounts; the thermostat lives under the SECOND one.
+    e1 = {**TUYA_DATA, "terminal_id": "t1"}
+    e2 = {**TUYA_DATA, "terminal_id": "t2"}
+    path = _write_entries(tmp_path, [
+        {"domain": "tuya", "data": e1},
+        {"domain": "tuya", "data": e2},
+    ])
+    managers = {
+        "t1": _FakeManager([]),                          # empty account (the bug)
+        "t2": _FakeManager([_fake_device("wkB", "wk")]),  # has the thermostat
+    }
+    monkeypatch.setattr(ha_import, "_build_manager",
+                        lambda creds: managers[creds["terminal_id"]])
+    result = ha_import.discover(path)
+    assert {d["device_id"] for d in result["devices"]} == {"wkB"}
+    assert result["entries"] == 2
+    assert result["homes"] == 2
+
+
+def test_discover_skips_failed_entry(tmp_path, monkeypatch):
+    e1 = {**TUYA_DATA, "terminal_id": "t1"}
+    e2 = {**TUYA_DATA, "terminal_id": "t2"}
+    path = _write_entries(tmp_path, [
+        {"domain": "tuya", "data": e1},
+        {"domain": "tuya", "data": e2},
+    ])
+    managers = {
+        "t1": _FakeManager([], raise_on_update=RuntimeError("401")),
+        "t2": _FakeManager([_fake_device("wkB", "wk")]),
+    }
+    monkeypatch.setattr(ha_import, "_build_manager",
+                        lambda creds: managers[creds["terminal_id"]])
+    result = ha_import.discover(path)
+    assert {d["device_id"] for d in result["devices"]} == {"wkB"}
 
 
 # --- normalize / to_definition ---------------------------------------------

@@ -1,5 +1,5 @@
 name: WiFi Thermostat Manager
-version: "1.1.3"
+version: "1.1.4"
 slug: wifi_thermostat_manager
 description: >-
   Add, control and monitor multiple WiFi smart thermostats from one dashboard.

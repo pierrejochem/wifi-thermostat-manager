@@ -73,11 +73,15 @@ class TuyaSdkMissing(HaImportError):
     """The ``tuya_sharing`` SDK is not installed in the container."""
 
 
-def read_tuya_entry(path: str = CONFIG_ENTRIES_PATH) -> dict[str, Any]:
-    """Return the ``data`` block of Home Assistant's Tuya config entry.
+def read_tuya_entries(path: str = CONFIG_ENTRIES_PATH) -> list[dict[str, Any]]:
+    """Return the ``data`` block of *every* Tuya config entry.
 
-    Raises ``TuyaEntryNotFound`` if there is no tuya entry, or ``HaImportError``
-    if the storage file is unreadable / malformed / missing expected keys.
+    Home Assistant can have more than one Tuya integration entry (e.g. two
+    linked Tuya/Smart Life accounts). Each has its own devices, so we must
+    query them all — reading only the first misses devices under the others.
+
+    Raises ``TuyaEntryNotFound`` if there is no tuya entry at all, or
+    ``HaImportError`` if the store is unreadable or no entry has usable creds.
     """
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -91,16 +95,24 @@ def read_tuya_entry(path: str = CONFIG_ENTRIES_PATH) -> dict[str, Any]:
         raise HaImportError(f"Could not read Home Assistant config store: {err}") from err
 
     entries = (store.get("data") or {}).get("entries") or []
-    for entry in entries:
-        if entry.get("domain") == "tuya":
-            data = entry.get("data") or {}
-            missing = [k for k in _REQUIRED_CREDS if not data.get(k)]
-            if missing:
-                raise HaImportError(
-                    "Tuya integration entry is missing expected fields: "
-                    + ", ".join(missing)
-                )
-            return data
+    tuya = [e.get("data") or {} for e in entries if e.get("domain") == "tuya"]
+    if not tuya:
+        raise TuyaEntryNotFound(
+            "No Tuya integration found in Home Assistant. Set up the official "
+            "Tuya integration first, then try importing again."
+        )
+    usable = [d for d in tuya if all(d.get(k) for k in _REQUIRED_CREDS)]
+    if not usable:
+        raise HaImportError(
+            "Found Tuya integration entr(ies) but none had the expected "
+            "credentials (user_code, terminal_id, endpoint, token_info)."
+        )
+    return usable
+
+
+def read_tuya_entry(path: str = CONFIG_ENTRIES_PATH) -> dict[str, Any]:
+    """Return the first usable Tuya config entry (used by the status check)."""
+    return read_tuya_entries(path)[0]
     raise TuyaEntryNotFound(
         "No Tuya integration found in Home Assistant. Set up the official Tuya "
         "integration first, then try importing again."
@@ -131,57 +143,72 @@ def discover(
 ) -> dict[str, Any]:
     """Discover Tuya devices via Home Assistant's stored creds.
 
-    Returns ``{devices, seen_categories, total}`` where ``devices`` are the
-    thermostat-like ones (normalized) and ``seen_categories`` is a histogram of
-    every category found. The histogram lets the caller explain an empty result
-    ("found 12 devices, none are thermostats") instead of failing silently.
+    Aggregates across *all* Tuya config entries (HA may have several linked
+    accounts). Returns ``{devices, seen_categories, total, homes, entries}``;
+    ``seen_categories`` is a histogram of every category found, so the caller
+    can explain an empty result instead of failing silently.
 
-    Does a single device-list fetch and never refreshes/persists the token.
+    Does a single device-list fetch per entry and never refreshes/persists the
+    token. If one entry's token fails it is skipped; only if *every* entry fails
+    is ``TuyaTokenError`` raised.
     """
     already = set(already_added_ids or ())
     categories = _categories()
-    creds = read_tuya_entry(path)
-    # When debugging, let the SDK log raw API responses (e.g. the /homes call)
-    # so we can see whether Tuya returns zero homes vs homes without devices.
+    creds_list = read_tuya_entries(path)
+    # When debugging, let the SDK log raw API responses (e.g. the /homes call).
     if log.isEnabledFor(logging.DEBUG):
         logging.getLogger("tuya_sharing").setLevel(logging.DEBUG)
-    token = creds.get("token_info") or {}
-    log.info(
-        "HA Tuya import: endpoint=%s, terminal=%s, token expires=%s",
-        creds.get("endpoint"), creds.get("terminal_id"), token.get("expire_time"),
-    )
-    manager = _build_manager(creds)
-    try:
-        manager.update_device_cache()
-    except TuyaSdkMissing:
-        raise
-    except Exception as err:  # noqa: BLE001 - SDK raises a wide range of errors
-        # Most failures here are an expired/invalid token. Surface a clear,
-        # actionable message rather than retrying (which could trigger a
-        # refresh and desync Home Assistant).
-        raise TuyaTokenError(
-            "Home Assistant's Tuya token was rejected. Open (or reload) the "
-            "Tuya integration in Home Assistant so it refreshes the token, "
-            f"then try again. ({err})"
-        ) from err
+    log.info("HA Tuya: %d Tuya config entr(y/ies) to query", len(creds_list))
 
-    homes = list(getattr(manager, "user_homes", []) or [])
-    devices: list[dict[str, Any]] = []
+    by_id: dict[str, dict[str, Any]] = {}
     seen: dict[str, int] = {}
-    for device in manager.device_map.values():
-        category = getattr(device, "category", None)
-        seen[category] = seen.get(category, 0) + 1
-        if category in categories:
-            devices.append(_normalize(device, already))
+    homes = 0
+    failures: list[str] = []
 
+    for index, creds in enumerate(creds_list, start=1):
+        token = creds.get("token_info") or {}
+        log.info(
+            "HA Tuya import: entry %d/%d endpoint=%s terminal=%s token expires=%s",
+            index, len(creds_list), creds.get("endpoint"),
+            creds.get("terminal_id"), token.get("expire_time"),
+        )
+        manager = _build_manager(creds)
+        try:
+            manager.update_device_cache()
+        except TuyaSdkMissing:
+            raise
+        except Exception as err:  # noqa: BLE001 - SDK raises a wide range of errors
+            # Skip this account (likely an expired token); keep the others.
+            log.warning("HA Tuya entry %s failed: %s", creds.get("terminal_id"), err)
+            failures.append(str(err))
+            continue
+
+        homes += len(getattr(manager, "user_homes", []) or [])
+        for device in manager.device_map.values():
+            category = getattr(device, "category", None)
+            seen[category] = seen.get(category, 0) + 1
+            if category in categories:
+                row = _normalize(device, already)
+                by_id[row["device_id"]] = row  # dedupe across accounts
+
+    # Every account failed and none yielded data -> surface a token error.
+    if failures and len(failures) == len(creds_list):
+        raise TuyaTokenError(
+            "Home Assistant's Tuya token(s) were rejected. Open (or reload) the "
+            "Tuya integration in Home Assistant so it refreshes the token, then "
+            f"try again. ({failures[0]})"
+        )
+
+    devices = list(by_id.values())
     total = sum(seen.values())
     log.info(
-        "HA Tuya discovery: %d home(s), %d device(s) total, %d thermostat(s); categories=%s",
-        len(homes), total, len(devices), seen,
+        "HA Tuya discovery: %d entr(ies), %d home(s), %d device(s) total, "
+        "%d thermostat(s); categories=%s",
+        len(creds_list), homes, total, len(devices), seen,
     )
     return {
         "devices": devices, "seen_categories": seen, "total": total,
-        "homes": len(homes),
+        "homes": homes, "entries": len(creds_list),
     }
 
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4
+- Fix import finding no devices when Home Assistant has more than one Tuya
+  account: query every Tuya config entry and aggregate devices across them,
+  instead of only reading the first entry (which could be an empty account).
+
 ## 1.1.3
 - Diagnostics for empty import lists: report the Tuya "home" count, log the
   endpoint/terminal/token-expiry, and pass through the tuya_sharing SDK's raw
