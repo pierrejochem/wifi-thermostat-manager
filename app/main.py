@@ -244,7 +244,8 @@ def ha_import_devices():
         if item is None:
             errors.append({"device_id": device_id, "error": "not found in Home Assistant"})
             continue
-        if item["already_added"]:
+        if item["already_added"] or item.get("battery"):
+            # Battery TRVs are cloud-only; never add them as local devices.
             skipped.append(device_id)
             continue
         try:

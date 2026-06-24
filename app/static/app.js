@@ -325,13 +325,15 @@ function renderHaDevices(data) {
   }
   haStatus.textContent = `${devices.length} thermostat(s) found.`;
   devices.forEach((d) => {
+    // Battery TRVs are cloud-only — not locally controllable by this add-on.
+    const blocked = d.already_added || d.battery;
     const row = document.createElement("label");
-    row.className = "ha-row" + (d.already_added ? " ha-added" : "");
+    row.className = "ha-row" + (blocked ? " ha-added" : "");
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.value = d.device_id;
-    cb.disabled = !!d.already_added;
+    cb.disabled = blocked;
     cb.addEventListener("change", updateHaImportButton);
     row.appendChild(cb);
 
@@ -345,10 +347,12 @@ function renderHaDevices(data) {
     name.textContent = d.name;
     row.appendChild(name);
 
-    if (d.already_added) {
+    const note = d.already_added ? "already added"
+      : d.battery ? "battery · use HA Tuya" : null;
+    if (note) {
       const tag = document.createElement("span");
       tag.className = "ha-tag";
-      tag.textContent = "already added";
+      tag.textContent = note;
       row.appendChild(tag);
     }
     haList.appendChild(row);

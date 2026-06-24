@@ -315,6 +315,22 @@ def _derive_tuya_config(device: Any) -> dict[str, Any]:
     return out
 
 
+def _is_battery(device: Any) -> bool:
+    """True if the device exposes a battery status code.
+
+    Battery thermostats (radiator TRVs) sleep and are effectively cloud-only,
+    so tinytuya local control can't reach them. A ``battery_*`` code is a far
+    more reliable signal than ``category`` or ``support_local`` (both of which
+    can claim local support on devices that never accept local connections).
+    """
+    codes: set[str] = set()
+    for attr in ("status_range", "status", "function"):
+        value = getattr(device, attr, None)
+        if isinstance(value, dict):
+            codes |= set(value.keys())
+    return any("battery" in str(code).lower() for code in codes)
+
+
 def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:
     """Turn a tuya_sharing ``CustomerDevice`` into our import row."""
     device_id = device.id
@@ -328,6 +344,8 @@ def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:
         "category": getattr(device, "category", None),
         "online": bool(getattr(device, "online", False)),
         "already_added": device_id in already_ids,
+        # Battery devices are cloud-only; not locally controllable here.
+        "battery": _is_battery(device),
     }
     # DP map / scale / limits derived from the cloud metadata (when available).
     row.update(_derive_tuya_config(device))

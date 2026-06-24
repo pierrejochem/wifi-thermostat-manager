@@ -23,6 +23,13 @@ the devices (with their local keys, DP map and temperature scale) from every
 linked Tuya account. Live local control still requires the device to be
 reachable on the LAN.
 
+> **Local control only.** This add-on talks to thermostats directly over the
+> LAN (Tuya port 6668). Mains-powered units (BHT/Beca/Moes floor thermostats)
+> work well. **Battery radiator valves (TRVs) are usually cloud-only** — they
+> sleep and never accept local connections, so they stay "Device Unreachable
+> (905)" here. Control those with Home Assistant's native **Tuya** integration
+> instead, and don't import them into this add-on.
+
 ## MQTT topic layout
 
 ```

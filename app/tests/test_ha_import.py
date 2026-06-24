@@ -10,11 +10,12 @@ import ha_import
 
 
 def _fake_device(device_id, category, name="Device", local_key="key", ip="1.2.3.4",
-                 online=True, local_strategy=None, status_range=None):
+                 online=True, local_strategy=None, status_range=None, status=None):
     return SimpleNamespace(
         id=device_id, category=category, name=name, local_key=local_key,
         ip=ip, online=online,
         local_strategy=local_strategy or {}, status_range=status_range or {},
+        status=status or {},
     )
 
 
@@ -261,6 +262,19 @@ def test_derive_handles_no_metadata():
     # A device with no local_strategy yields no derived keys (driver defaults).
     cfg = ha_import._derive_tuya_config(_fake_device("x", "wk"))
     assert cfg == {}
+
+
+def test_battery_device_flagged():
+    trv = _fake_device("trv1", "wk", status={"temp_set": 220, "battery_percentage": 100})
+    mains = _fake_device("th1", "wk", status={"temp_set": 220, "temp_current": 253})
+    assert ha_import._normalize(trv, set())["battery"] is True
+    assert ha_import._normalize(mains, set())["battery"] is False
+
+
+def test_battery_detected_in_status_range():
+    trv = _fake_device("trv1", "wk",
+                       status_range={"battery_state": _status_range("battery_state", "{}")})
+    assert ha_import._normalize(trv, set())["battery"] is True
 
 
 # --- HA_CONFIG_DIR env override --------------------------------------------

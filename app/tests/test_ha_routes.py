@@ -28,10 +28,11 @@ def _no_dupes(monkeypatch):
     monkeypatch.setattr(main, "_already_added_tuya_ids", lambda: set())
 
 
-def _row(device_id, name="Hall", already_added=False):
+def _row(device_id, name="Hall", already_added=False, battery=False):
     return {
         "device_id": device_id, "name": name, "local_key": "k", "address": "Auto",
         "category": "wk", "online": True, "already_added": already_added,
+        "battery": battery,
     }
 
 
@@ -120,6 +121,19 @@ def test_import_adds_selected_skips_already_added(client, monkeypatch):
     # add_device called exactly once, with a proper tuya definition.
     assert len(added) == 1
     assert added[0]["type"] == "tuya" and added[0]["device_id"] == "wk1"
+
+
+def test_import_skips_battery_device(client, monkeypatch):
+    monkeypatch.setattr(ha_import, "fetch_thermostats",
+                        lambda **k: [_row("wk1"), _row("trv1", battery=True)])
+    added = []
+    monkeypatch.setattr(main.manager, "add_device",
+                        lambda d: added.append(d) or {"id": "x", "name": d["name"]})
+    res = client.post("/api/ha/import", json={"device_ids": ["wk1", "trv1"]})
+    body = res.get_json()
+    assert [d["device_id"] for d in body["imported"]] == ["wk1"]
+    assert body["skipped"] == ["trv1"]
+    assert len(added) == 1 and added[0]["device_id"] == "wk1"
 
 
 def test_import_unknown_device_errors(client, monkeypatch):

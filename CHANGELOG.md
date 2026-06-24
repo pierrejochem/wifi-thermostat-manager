@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.8
+- Keep only locally-controllable thermostats: battery devices (radiator TRVs)
+  are detected by their `battery_*` status code and shown as non-importable
+  ("battery · use HA Tuya"), and skipped server-side on import. They are
+  cloud-only and can't be reached over the LAN — use HA's Tuya integration.
+
 ## 1.1.7
 - Fix crash on import (`'DeviceStatusRange' object has no attribute 'get'`):
   read the value spec from the SDK object's `values` attribute instead of
