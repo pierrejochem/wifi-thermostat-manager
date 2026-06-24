@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1
+- Add additional thermostat categories
+
+## 1.1.0
+- Add modal for adding Tuya devices via integration
+- Correct repository url
+- Add screenshot to readme
+
 ## 1.0.2
 - Removed the custom profile so the Supervisor's auto-generated default 
   (which permits s6's mount and init plumbing) is used instead.
