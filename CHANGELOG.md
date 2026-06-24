@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.6
+- Auto-configure imported Tuya thermostats from the cloud metadata: derive the
+  DP map (current/target/mode/power), temperature divisor and min/max/step from
+  the device's local_strategy and status_range, instead of assuming defaults.
+  Re-import a device (remove, then import) to pick up the mapping.
+
+## 1.1.5
+- Enable host networking so the add-on can reach thermostats on the LAN and
+  use Tuya broadcast discovery (fixes "Device Unreachable / 905" with no values).
+
 ## 1.1.4
 - Fix import finding no devices when Home Assistant has more than one Tuya
   account: query every Tuya config entry and aggregate devices across them,

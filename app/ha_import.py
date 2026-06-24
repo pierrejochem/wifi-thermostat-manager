@@ -221,11 +221,86 @@ def fetch_thermostats(
     return discover(path, already_added_ids=already_added_ids)["devices"]
 
 
+# Map Tuya data-point status codes to the roles the local driver needs.
+# Tuya models reuse these standard codes, so matching by code (not DP number)
+# works across most thermostats. Fahrenheit twins are accepted as a fallback.
+_CURRENT_CODES = ("temp_current", "temp_current_f")
+_TARGET_CODES = ("temp_set", "temp_set_f")
+_MODE_CODES = ("mode",)
+_POWER_CODES = ("switch", "Power", "power", "poweron")
+_HEATING_CODES = ("valve_state", "work_state", "heat_state", "heating", "valve")
+
+
+def _parse_value_desc(raw: Any) -> dict[str, Any]:
+    """The status_range ``value`` is a JSON string (or already a dict)."""
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except ValueError:
+            return {}
+    return {}
+
+
+def _derive_tuya_config(device: Any) -> dict[str, Any]:
+    """Derive DP map, temperature scale and limits from the cloud metadata.
+
+    Uses the device's ``local_strategy`` (DP number -> status code) and
+    ``status_range`` (per-code value spec). Returns only the keys we could
+    determine, so anything missing falls back to the Tuya driver's defaults.
+    """
+    strategy = getattr(device, "local_strategy", None) or {}
+    status_range = getattr(device, "status_range", None) or {}
+
+    code_to_dp: dict[str, str] = {}
+    for dp_id, info in strategy.items():
+        code = (info or {}).get("status_code")
+        if code and code not in code_to_dp:
+            code_to_dp[code] = str(dp_id)
+
+    def pick(codes):
+        for code in codes:
+            if code in code_to_dp:
+                return code_to_dp[code], code
+        return None, None
+
+    out: dict[str, Any] = {}
+    dps: dict[str, Any] = {}
+    cur_dp, _ = pick(_CURRENT_CODES)
+    tgt_dp, tgt_code = pick(_TARGET_CODES)
+    mode_dp, _ = pick(_MODE_CODES)
+    power_dp, _ = pick(_POWER_CODES)
+    heat_dp, _ = pick(_HEATING_CODES)
+    for role, dp in (("current", cur_dp), ("target", tgt_dp), ("mode", mode_dp),
+                     ("power", power_dp), ("heating", heat_dp)):
+        if dp is not None:
+            dps[role] = dp
+    if dps:
+        out["dps"] = dps
+
+    # Temperature scale + limits come from the target setpoint's spec.
+    desc = _parse_value_desc((status_range.get(tgt_code) or {}).get("value")) if tgt_code else {}
+    scale = desc.get("scale")
+    if scale is not None:
+        try:
+            divisor = 10 ** int(scale)
+        except (TypeError, ValueError):
+            divisor = 0
+        if divisor > 0:
+            out["temp_divisor"] = divisor
+            for key, src in (("min_temp", "min"), ("max_temp", "max"), ("temp_step", "step")):
+                if isinstance(desc.get(src), (int, float)):
+                    out[key] = round(desc[src] / divisor, 2)
+    return out
+
+
 def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:
     """Turn a tuya_sharing ``CustomerDevice`` into our import row."""
     device_id = device.id
     ip = getattr(device, "ip", None)
-    return {
+    row = {
         "device_id": device_id,
         "name": getattr(device, "name", None) or device_id,
         "local_key": getattr(device, "local_key", ""),
@@ -235,21 +310,34 @@ def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:
         "online": bool(getattr(device, "online", False)),
         "already_added": device_id in already_ids,
     }
+    # DP map / scale / limits derived from the cloud metadata (when available).
+    row.update(_derive_tuya_config(device))
+    return row
+
+
+# Extra keys the import may derive from cloud metadata, copied into the
+# definition when present (otherwise the driver's defaults apply).
+_DERIVED_KEYS = ("dps", "min_temp", "max_temp", "temp_step")
 
 
 def to_definition(item: dict[str, Any]) -> dict[str, Any]:
     """Map a normalized import row to a Tuya thermostat definition.
 
-    ``CustomerDevice`` carries no protocol version or temperature scale, so we
-    fall back to the Tuya driver's defaults (3.3 / divisor 2). The user can
-    adjust both in the edit dialog if readings look wrong.
+    The DP map, temperature divisor and limits are filled from the cloud
+    metadata when we could derive them; otherwise the Tuya driver's defaults
+    apply (divisor 2). ``CustomerDevice`` carries no protocol version, so that
+    stays at 3.3 — adjust in the edit dialog if a device needs 3.4/3.5.
     """
-    return {
+    definition: dict[str, Any] = {
         "type": "tuya",
         "name": item["name"],
         "device_id": item["device_id"],
         "local_key": item["local_key"],
         "address": item.get("address") or "Auto",
         "version": "3.3",
-        "temp_divisor": 2,
+        "temp_divisor": item.get("temp_divisor", 2),
     }
+    for key in _DERIVED_KEYS:
+        if key in item:
+            definition[key] = item[key]
+    return definition

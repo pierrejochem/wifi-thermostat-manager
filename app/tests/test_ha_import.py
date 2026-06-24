@@ -10,11 +10,26 @@ import ha_import
 
 
 def _fake_device(device_id, category, name="Device", local_key="key", ip="1.2.3.4",
-                 online=True):
+                 online=True, local_strategy=None, status_range=None):
     return SimpleNamespace(
         id=device_id, category=category, name=name, local_key=local_key,
         ip=ip, online=online,
+        local_strategy=local_strategy or {}, status_range=status_range or {},
     )
+
+
+# Mirrors the real TRV-607/608 metadata: target=DP16, current=DP24, mode=DP2,
+# scale 1 (=> divide by 10).
+TRV_STRATEGY = {
+    "2": {"status_code": "mode"},
+    "16": {"status_code": "temp_set"},
+    "24": {"status_code": "temp_current"},
+    "40": {"status_code": "child_lock"},
+}
+TRV_STATUS_RANGE = {
+    "temp_set": {"value": '{"unit":"\\u2103","min":50,"max":350,"scale":1,"step":5}'},
+    "temp_current": {"value": '{"unit":"\\u2103","min":-300,"max":1000,"scale":1,"step":5}'},
+}
 
 
 class _FakeManager:
@@ -202,6 +217,44 @@ def test_to_definition_defaults():
         "type": "tuya", "name": "Hall", "device_id": "wk1", "local_key": "k",
         "address": "Auto", "version": "3.3", "temp_divisor": 2,
     }
+
+
+def test_derive_dp_map_and_scale():
+    device = _fake_device("trv1", "wk", local_strategy=TRV_STRATEGY,
+                           status_range=TRV_STATUS_RANGE)
+    cfg = ha_import._derive_tuya_config(device)
+    assert cfg["dps"] == {"current": "24", "target": "16", "mode": "2"}
+    assert cfg["temp_divisor"] == 10
+    assert cfg["min_temp"] == 5
+    assert cfg["max_temp"] == 35
+    assert cfg["temp_step"] == 0.5
+
+
+def test_normalize_includes_derived_config():
+    device = _fake_device("trv1", "wk", local_strategy=TRV_STRATEGY,
+                           status_range=TRV_STATUS_RANGE)
+    row = ha_import._normalize(device, set())
+    assert row["dps"]["target"] == "16"
+    assert row["temp_divisor"] == 10
+
+
+def test_to_definition_carries_derived_config():
+    item = {
+        "device_id": "trv1", "name": "TRV", "local_key": "k", "address": "Auto",
+        "dps": {"current": "24", "target": "16", "mode": "2"},
+        "temp_divisor": 10, "min_temp": 5, "max_temp": 35, "temp_step": 0.5,
+    }
+    definition = ha_import.to_definition(item)
+    assert definition["temp_divisor"] == 10
+    assert definition["dps"] == {"current": "24", "target": "16", "mode": "2"}
+    assert definition["min_temp"] == 5 and definition["max_temp"] == 35
+    assert definition["version"] == "3.3"
+
+
+def test_derive_handles_no_metadata():
+    # A device with no local_strategy yields no derived keys (driver defaults).
+    cfg = ha_import._derive_tuya_config(_fake_device("x", "wk"))
+    assert cfg == {}
 
 
 # --- HA_CONFIG_DIR env override --------------------------------------------
