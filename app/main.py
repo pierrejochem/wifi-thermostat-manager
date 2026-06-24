@@ -210,12 +210,16 @@ def ha_status():
 @app.get("/api/ha/devices")
 def ha_devices():
     try:
-        devices = ha_import.fetch_thermostats(
-            already_added_ids=_already_added_tuya_ids()
-        )
+        result = ha_import.discover(already_added_ids=_already_added_tuya_ids())
     except ha_import.HaImportError as err:
         return _ha_error_response(err)
-    return jsonify(devices=devices)
+    # Return the category histogram too, so the UI can explain an empty list
+    # ("found 12 Tuya devices, none recognized as thermostats").
+    return jsonify(
+        devices=result["devices"],
+        seen_categories=result["seen_categories"],
+        total=result["total"],
+    )
 
 
 @app.post("/api/ha/import")

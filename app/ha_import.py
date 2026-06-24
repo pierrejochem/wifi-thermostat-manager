@@ -35,9 +35,23 @@ CONFIG_ENTRIES_PATH = os.path.join(HA_CONFIG_DIR, ".storage", "core.config_entri
 # Reusing it is what makes HA's stored token valid for our Manager.
 TUYA_CLIENT_ID = "HA_3y9q4ak7g4ephrvke"
 
-# Tuya device categories that are thermostats: "wk" = thermostat,
-# "wkf" = thermostatic radiator valve.
-THERMOSTAT_CATEGORIES = {"wk", "wkf"}
+# Tuya device categories Home Assistant's own Tuya integration treats as
+# climate entities (see HA core tuya/climate.py). Matching this set means we
+# show every thermostat-like device HA already recognizes, not just a subset:
+#   wk = thermostat, wkf = radiator valve / wall-hung furnace, kt = AC,
+#   qn = heater, rs = water heater, dbl = electric heater.
+THERMOSTAT_CATEGORIES = {"dbl", "kt", "qn", "rs", "wk", "wkf"}
+
+
+def _categories() -> set[str]:
+    """Categories treated as thermostats, plus any from the env override.
+
+    ``TUYA_THERMOSTAT_CATEGORIES`` (comma-separated) lets a user surface an
+    unusual category without rebuilding, in case their device reports one we
+    don't list above.
+    """
+    extra = os.environ.get("TUYA_THERMOSTAT_CATEGORIES", "")
+    return THERMOSTAT_CATEGORIES | {c.strip() for c in extra.split(",") if c.strip()}
 
 # Keys we expect inside the tuya config entry's ``data`` block.
 _REQUIRED_CREDS = ("user_code", "terminal_id", "endpoint", "token_info")
@@ -110,17 +124,22 @@ def _build_manager(creds: dict[str, Any]):
     )
 
 
-def fetch_thermostats(
+def discover(
     path: str = CONFIG_ENTRIES_PATH,
     *,
     already_added_ids: set[str] | None = None,
-) -> list[dict[str, Any]]:
-    """List the user's Tuya thermostats using Home Assistant's stored creds.
+) -> dict[str, Any]:
+    """Discover Tuya devices via Home Assistant's stored creds.
 
-    Returns a list of normalized dicts (see ``_normalize``). Does a single
-    device-list fetch and never refreshes/persists the token.
+    Returns ``{devices, seen_categories, total}`` where ``devices`` are the
+    thermostat-like ones (normalized) and ``seen_categories`` is a histogram of
+    every category found. The histogram lets the caller explain an empty result
+    ("found 12 devices, none are thermostats") instead of failing silently.
+
+    Does a single device-list fetch and never refreshes/persists the token.
     """
     already = set(already_added_ids or ())
+    categories = _categories()
     creds = read_tuya_entry(path)
     manager = _build_manager(creds)
     try:
@@ -137,11 +156,29 @@ def fetch_thermostats(
             f"then try again. ({err})"
         ) from err
 
-    devices = []
+    devices: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
     for device in manager.device_map.values():
-        if getattr(device, "category", None) in THERMOSTAT_CATEGORIES:
+        category = getattr(device, "category", None)
+        seen[category] = seen.get(category, 0) + 1
+        if category in categories:
             devices.append(_normalize(device, already))
-    return devices
+
+    total = sum(seen.values())
+    log.info(
+        "HA Tuya discovery: %d device(s) total, %d thermostat(s); categories=%s",
+        total, len(devices), seen,
+    )
+    return {"devices": devices, "seen_categories": seen, "total": total}
+
+
+def fetch_thermostats(
+    path: str = CONFIG_ENTRIES_PATH,
+    *,
+    already_added_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """List the user's Tuya thermostats (thin wrapper over ``discover``)."""
+    return discover(path, already_added_ids=already_added_ids)["devices"]
 
 
 def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:

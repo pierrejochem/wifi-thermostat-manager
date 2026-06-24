@@ -80,15 +80,39 @@ def test_read_tuya_entry_missing_fields(tmp_path):
 def test_fetch_filters_categories(tmp_path, monkeypatch):
     path = _write_entries(tmp_path, [{"domain": "tuya", "data": TUYA_DATA}])
     devices = [
-        _fake_device("wk1", "wk"),
-        _fake_device("trv1", "wkf"),
+        _fake_device("wk1", "wk"),          # thermostat
+        _fake_device("trv1", "wkf"),        # radiator valve
+        _fake_device("ac1", "kt"),          # AC-style climate
+        _fake_device("heat1", "qn"),        # heater
+        _fake_device("wh1", "rs"),          # water heater
+        _fake_device("dbl1", "dbl"),        # electric heater
         _fake_device("sensor1", "wsdcg"),   # temp/humidity sensor — must drop
         _fake_device("switch1", "kg"),      # switch — must drop
     ]
     monkeypatch.setattr(ha_import, "_build_manager", lambda creds: _FakeManager(devices))
     result = ha_import.fetch_thermostats(path)
     ids = {r["device_id"] for r in result}
-    assert ids == {"wk1", "trv1"}
+    # Matches the categories Home Assistant's own Tuya climate platform handles.
+    assert ids == {"wk1", "trv1", "ac1", "heat1", "wh1", "dbl1"}
+
+
+def test_discover_reports_seen_categories(tmp_path, monkeypatch):
+    path = _write_entries(tmp_path, [{"domain": "tuya", "data": TUYA_DATA}])
+    devices = [_fake_device("wk1", "wk"), _fake_device("s1", "kg"), _fake_device("s2", "kg")]
+    monkeypatch.setattr(ha_import, "_build_manager", lambda creds: _FakeManager(devices))
+    result = ha_import.discover(path)
+    assert {d["device_id"] for d in result["devices"]} == {"wk1"}
+    assert result["total"] == 3
+    assert result["seen_categories"] == {"wk": 1, "kg": 2}
+
+
+def test_extra_categories_env_override(tmp_path, monkeypatch):
+    path = _write_entries(tmp_path, [{"domain": "tuya", "data": TUYA_DATA}])
+    devices = [_fake_device("weird1", "xyz")]
+    monkeypatch.setenv("TUYA_THERMOSTAT_CATEGORIES", "xyz, abc")
+    monkeypatch.setattr(ha_import, "_build_manager", lambda creds: _FakeManager(devices))
+    result = ha_import.fetch_thermostats(path)
+    assert {r["device_id"] for r in result} == {"weird1"}
 
 
 def test_fetch_already_added_flag(tmp_path, monkeypatch):

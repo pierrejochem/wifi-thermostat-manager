@@ -56,18 +56,34 @@ def test_status_not_found(client, monkeypatch):
 # --- /api/ha/devices --------------------------------------------------------
 
 def test_devices_ok(client, monkeypatch):
-    monkeypatch.setattr(ha_import, "fetch_thermostats",
-                        lambda **k: [_row("wk1"), _row("wk2", already_added=True)])
+    monkeypatch.setattr(ha_import, "discover", lambda **k: {
+        "devices": [_row("wk1"), _row("wk2", already_added=True)],
+        "seen_categories": {"wk": 2}, "total": 2,
+    })
     res = client.get("/api/ha/devices")
     assert res.status_code == 200
-    devices = res.get_json()["devices"]
-    assert [d["device_id"] for d in devices] == ["wk1", "wk2"]
+    body = res.get_json()
+    assert [d["device_id"] for d in body["devices"]] == ["wk1", "wk2"]
+    assert body["seen_categories"] == {"wk": 2}
+    assert body["total"] == 2
+
+
+def test_devices_empty_reports_categories(client, monkeypatch):
+    # Many Tuya devices present, none are thermostats -> UI can explain why.
+    monkeypatch.setattr(ha_import, "discover", lambda **k: {
+        "devices": [], "seen_categories": {"kg": 5, "dj": 3}, "total": 8,
+    })
+    res = client.get("/api/ha/devices")
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["devices"] == []
+    assert body["total"] == 8
 
 
 def test_devices_token_error(client, monkeypatch):
     def _raise(**k):
         raise ha_import.TuyaTokenError("expired")
-    monkeypatch.setattr(ha_import, "fetch_thermostats", _raise)
+    monkeypatch.setattr(ha_import, "discover", _raise)
     res = client.get("/api/ha/devices")
     assert res.status_code == 409
     assert "expired" in res.get_json()["error"]
@@ -76,7 +92,7 @@ def test_devices_token_error(client, monkeypatch):
 def test_devices_entry_not_found(client, monkeypatch):
     def _raise(**k):
         raise ha_import.TuyaEntryNotFound("none")
-    monkeypatch.setattr(ha_import, "fetch_thermostats", _raise)
+    monkeypatch.setattr(ha_import, "discover", _raise)
     res = client.get("/api/ha/devices")
     assert res.status_code == 404
 

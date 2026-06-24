@@ -1,5 +1,5 @@
 name: WiFi Thermostat Manager
-version: "1.1.0"
+version: "1.1.1"
 slug: wifi_thermostat_manager
 description: >-
   Add, control and monitor multiple WiFi smart thermostats from one dashboard.
@@ -44,6 +44,7 @@ options:
   base_topic: wtm
   poll_interval: 30
   log_level: info
+  extra_thermostat_categories: ""
 
 schema:
   mqtt_host: str?
@@ -54,3 +55,4 @@ schema:
   base_topic: str
   poll_interval: int(5,3600)
   log_level: list(debug|info|warning|error)
+  extra_thermostat_categories: str?

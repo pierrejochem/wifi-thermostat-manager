@@ -39,5 +39,9 @@ export POLL_INTERVAL="$(bashio::config 'poll_interval')"
 export INGRESS_PORT="8099"
 export DATA_DIR="/data"
 
+# Optional: extra Tuya categories to treat as thermostats when importing from
+# Home Assistant (comma-separated), for devices reporting an unusual category.
+export TUYA_THERMOSTAT_CATEGORIES="$(bashio::config 'extra_thermostat_categories')"
+
 cd /app
 exec python3 main.py

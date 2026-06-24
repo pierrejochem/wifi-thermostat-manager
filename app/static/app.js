@@ -299,10 +299,21 @@ function updateHaImportButton() {
   haImportSelected.disabled = haSelectedIds().length === 0;
 }
 
-function renderHaDevices(devices) {
+function renderHaDevices(data) {
+  const devices = data.devices || [];
   haList.innerHTML = "";
   if (!devices.length) {
-    haStatus.textContent = "No thermostats found in Home Assistant.";
+    const total = data.total || 0;
+    if (total > 0) {
+      const cats = Object.entries(data.seen_categories || {})
+        .map(([c, n]) => `${c}×${n}`).join(", ");
+      haStatus.textContent =
+        `Found ${total} Tuya device(s) in Home Assistant, but none look like ` +
+        `thermostats (categories seen: ${cats}). If one of these is your ` +
+        `thermostat, set the TUYA_THERMOSTAT_CATEGORIES add-on option to its category.`;
+    } else {
+      haStatus.textContent = "No Tuya devices found in Home Assistant.";
+    }
     return;
   }
   haStatus.textContent = `${devices.length} thermostat(s) found.`;
@@ -346,7 +357,7 @@ async function openHaModal() {
   haModal.classList.remove("hidden");
   try {
     const data = await API.get("api/ha/devices");
-    renderHaDevices(data.devices || []);
+    renderHaDevices(data);
   } catch (err) {
     haStatus.textContent = "";
     haError.textContent = err.message;
