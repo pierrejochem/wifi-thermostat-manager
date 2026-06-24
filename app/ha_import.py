@@ -141,6 +141,15 @@ def discover(
     already = set(already_added_ids or ())
     categories = _categories()
     creds = read_tuya_entry(path)
+    # When debugging, let the SDK log raw API responses (e.g. the /homes call)
+    # so we can see whether Tuya returns zero homes vs homes without devices.
+    if log.isEnabledFor(logging.DEBUG):
+        logging.getLogger("tuya_sharing").setLevel(logging.DEBUG)
+    token = creds.get("token_info") or {}
+    log.info(
+        "HA Tuya import: endpoint=%s, terminal=%s, token expires=%s",
+        creds.get("endpoint"), creds.get("terminal_id"), token.get("expire_time"),
+    )
     manager = _build_manager(creds)
     try:
         manager.update_device_cache()
@@ -156,6 +165,7 @@ def discover(
             f"then try again. ({err})"
         ) from err
 
+    homes = list(getattr(manager, "user_homes", []) or [])
     devices: list[dict[str, Any]] = []
     seen: dict[str, int] = {}
     for device in manager.device_map.values():
@@ -166,10 +176,13 @@ def discover(
 
     total = sum(seen.values())
     log.info(
-        "HA Tuya discovery: %d device(s) total, %d thermostat(s); categories=%s",
-        total, len(devices), seen,
+        "HA Tuya discovery: %d home(s), %d device(s) total, %d thermostat(s); categories=%s",
+        len(homes), total, len(devices), seen,
     )
-    return {"devices": devices, "seen_categories": seen, "total": total}
+    return {
+        "devices": devices, "seen_categories": seen, "total": total,
+        "homes": len(homes),
+    }
 
 
 def fetch_thermostats(

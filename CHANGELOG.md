@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3
+- Diagnostics for empty import lists: report the Tuya "home" count, log the
+  endpoint/terminal/token-expiry, and pass through the tuya_sharing SDK's raw
+  API responses when the add-on log level is set to debug. Helps pin down why
+  the device list comes back empty.
+
 ## 1.1.2
 - Fix add-on update being blocked: use the legacy `homeassistant_config:ro`
   map syntax for wider Supervisor compatibility (the object form was rejected

@@ -304,15 +304,22 @@ function renderHaDevices(data) {
   haList.innerHTML = "";
   if (!devices.length) {
     const total = data.total || 0;
+    const homes = data.homes;
     if (total > 0) {
       const cats = Object.entries(data.seen_categories || {})
         .map(([c, n]) => `${c}×${n}`).join(", ");
       haStatus.textContent =
         `Found ${total} Tuya device(s) in Home Assistant, but none look like ` +
         `thermostats (categories seen: ${cats}). If one of these is your ` +
-        `thermostat, set the TUYA_THERMOSTAT_CATEGORIES add-on option to its category.`;
+        `thermostat, set the extra_thermostat_categories add-on option to its category.`;
+    } else if (homes === 0) {
+      haStatus.textContent =
+        "Connected to Tuya via Home Assistant, but the account returned no " +
+        "homes/devices. Make sure your thermostats live in a 'home' in the " +
+        "Smart Life / Tuya app linked to the Home Assistant Tuya integration.";
     } else {
-      haStatus.textContent = "No Tuya devices found in Home Assistant.";
+      haStatus.textContent =
+        `Connected to Tuya (${homes} home(s)), but no devices were returned.`;
     }
     return;
   }

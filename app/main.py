@@ -219,6 +219,7 @@ def ha_devices():
         devices=result["devices"],
         seen_categories=result["seen_categories"],
         total=result["total"],
+        homes=result.get("homes"),
     )
 
 
