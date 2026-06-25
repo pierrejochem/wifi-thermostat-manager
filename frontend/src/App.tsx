@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import type { Thermostat, TypeSchemas } from "./types";
 import { TopBar } from "./components/TopBar";
@@ -12,6 +12,8 @@ export default function App() {
   const [schemas, setSchemas] = useState<TypeSchemas | null>(null);
   const [modal, setModal] = useState<"add" | "import" | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const refresh = useCallback(async () => {
     try {
@@ -41,6 +43,18 @@ export default function App() {
   const closeModals = () => { setModal(null); setEditId(null); };
   const openAdd = () => { setEditId(null); setModal("add"); };
 
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  // A failed command snaps the optimistic value back (refresh) and tells the user.
+  const onSetTemp = (id: string, t: number) =>
+    api.setTemperature(id, t).catch((e) => { showToast((e as Error).message); refresh(); });
+  const onSetMode = (id: string, m: string) =>
+    api.setMode(id, m).then(refresh).catch((e) => { showToast((e as Error).message); refresh(); });
+
   return (
     <>
       <TopBar roomCount={devices.length} avgTemp={avgTemp} heatingCount={heatingCount}
@@ -57,13 +71,14 @@ export default function App() {
           <section className="grid" aria-live="polite">
             {devices.map((d) => (
               <ThermostatCard key={d.id} device={d}
-                onSetTemp={(id, t) => api.setTemperature(id, t).catch(console.error)}
-                onSetMode={(id, m) => api.setMode(id, m).then(refresh).catch(console.error)}
+                onSetTemp={onSetTemp}
+                onSetMode={onSetMode}
                 onEdit={(id) => { setEditId(id); setModal("add"); }} />
             ))}
           </section>
         )}
       </main>
+      {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
       {modal === "add" && schemas &&
         <AddEditModal schemas={schemas} editId={editId} onClose={closeModals} onSaved={refresh} />}
       {modal === "import" &&

@@ -106,21 +106,25 @@ class ThermostatManager:
             log.debug("Immediate refresh of %s failed: %s", device.name, err)
 
     # -- commands ---------------------------------------------------------
-    def command_set_temperature(self, thermostat_id: str, temperature: float) -> bool:
+    # Return value: None = thermostat/mode not found (HTTP 404/400); True =
+    # command applied; False = the driver could not apply it (e.g. the cloud
+    # rejected it) so the caller can report a real error instead of silently
+    # reverting. Drivers that return None from set_* are treated as applied.
+    def command_set_temperature(self, thermostat_id: str, temperature: float) -> bool | None:
         device = self._devices.get(thermostat_id)
         if not device:
-            return False
-        device.set_target_temperature(float(temperature))
+            return None
+        ok = device.set_target_temperature(float(temperature))
         self.mqtt.publish_state(device)
-        return True
+        return ok is not False
 
-    def command_set_mode(self, thermostat_id: str, mode: str) -> bool:
+    def command_set_mode(self, thermostat_id: str, mode: str) -> bool | None:
         device = self._devices.get(thermostat_id)
         if not device or mode not in VALID_MODES:
-            return False
-        device.set_hvac_mode(mode)
+            return None
+        ok = device.set_hvac_mode(mode)
         self.mqtt.publish_state(device)
-        return True
+        return ok is not False
 
     def _on_mqtt_command(self, thermostat_id: str, command: str, payload: str) -> None:
         """Handle a command that arrived from Home Assistant over MQTT."""

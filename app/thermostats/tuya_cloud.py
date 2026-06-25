@@ -121,11 +121,13 @@ class TuyaCloudThermostat(BaseThermostat):
             return "heating" if cur < tgt else "idle"
         return "idle"
 
-    def set_target_temperature(self, temperature: float) -> None:
+    def set_target_temperature(self, temperature: float) -> bool:
         temperature = self.clamp(temperature)
-        if SESSION.send(self.device_id,
-                        [{"code": self.codes["target"], "value": self._scale_out(temperature)}]):
+        ok = SESSION.send(self.device_id,
+                          [{"code": self.codes["target"], "value": self._scale_out(temperature)}])
+        if ok:
             self.state.target_temperature = temperature
+        return ok
 
     def _power_command(self, on: bool) -> dict[str, Any]:
         """Build the on/off command for this device's on/off convention."""
@@ -134,7 +136,9 @@ class TuyaCloudThermostat(BaseThermostat):
         return {"code": self.codes["mode"],
                 "value": _MODE_ON_VALUE if on else _MODE_OFF_VALUE}
 
-    def set_hvac_mode(self, mode: str) -> None:
+    def set_hvac_mode(self, mode: str) -> bool:
         on = mode != MODE_OFF
-        if SESSION.send(self.device_id, [self._power_command(on)]):
+        ok = SESSION.send(self.device_id, [self._power_command(on)])
+        if ok:
             self.state.hvac_mode = mode
+        return ok

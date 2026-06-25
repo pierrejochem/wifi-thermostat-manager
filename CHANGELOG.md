@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+- Surface failed commands instead of silently reverting: when the cloud rejects a
+  setpoint or mode change, the dashboard now shows an error toast and the value
+  snaps back, and the API returns a real error (502) instead of a false success.
+
 ## 1.4.0
 - New dashboard design — "Heatmap of the home". Every room sits on a cold→hot
   thermal scale bar (current marker + target tick), tiles tint by state

@@ -221,6 +221,17 @@ main { max-width: 1240px; margin: 0 auto; padding: 4px 30px 56px; }
 .ha-tag-battery { color: var(--ember); border-color: color-mix(in srgb, var(--ember) 35%, var(--line)); background: var(--ember-soft); }
 .ha-selcount { margin-right: auto; font-size: .82rem; color: var(--muted); font-weight: 600; }
 
+/* ---- Toast (command errors) ---- */
+.toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 40;
+  max-width: min(92vw, 460px); padding: 13px 18px; border-radius: 14px;
+  background: var(--tile); color: var(--ink); font-size: .88rem; font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--ember) 45%, var(--line));
+  box-shadow: var(--shadow); border-left: 4px solid var(--ember);
+  animation: toast-in .24s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+
 .hidden { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {

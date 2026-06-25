@@ -150,8 +150,12 @@ def set_temperature(thermostat_id: str):
         temperature = float(body["temperature"])
     except (KeyError, TypeError, ValueError):
         return jsonify(error="temperature (number) is required"), 400
-    if not manager.command_set_temperature(thermostat_id, temperature):
+    result = manager.command_set_temperature(thermostat_id, temperature)
+    if result is None:
         return jsonify(error="not found"), 404
+    if not result:
+        return jsonify(error="The thermostat did not accept the new temperature. "
+                             "Check the add-on log for the cloud error."), 502
     return jsonify(ok=True)
 
 
@@ -159,8 +163,12 @@ def set_temperature(thermostat_id: str):
 def set_mode(thermostat_id: str):
     body = request.get_json(force=True, silent=True) or {}
     mode = str(body.get("mode", ""))
-    if not manager.command_set_mode(thermostat_id, mode):
+    result = manager.command_set_mode(thermostat_id, mode)
+    if result is None:
         return jsonify(error="invalid mode or thermostat not found"), 400
+    if not result:
+        return jsonify(error="The thermostat did not accept the mode change. "
+                             "Check the add-on log for the cloud error."), 502
     return jsonify(ok=True)
 
 

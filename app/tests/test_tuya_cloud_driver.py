@@ -111,9 +111,19 @@ def test_refresh_unavailable_when_no_status(monkeypatch):
 
 def test_set_target_sends_scaled_command(monkeypatch):
     d = _device(monkeypatch, {})
-    d.set_target_temperature(21.5)
+    assert d.set_target_temperature(21.5) is True
     assert drv.SESSION.sent == [("bf1", [{"code": "temp_set", "value": 215}])]
     assert d.state.target_temperature == 21.5
+
+
+def test_set_target_returns_false_when_send_fails(monkeypatch):
+    class FailSession:
+        def status(self, device_id): return {}
+        def send(self, device_id, commands): return False
+    monkeypatch.setattr(drv, "SESSION", FailSession())
+    d = drv.TuyaCloudThermostat({"id": "x", "device_id": "bf1", "type": "tuya_cloud", "temp_divisor": 10})
+    assert d.set_target_temperature(21.5) is False
+    assert d.state.target_temperature is None    # not applied on failure
 
 
 def test_set_mode_not_applied_when_send_fails(monkeypatch):
