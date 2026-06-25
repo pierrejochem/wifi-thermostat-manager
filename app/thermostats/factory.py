@@ -6,9 +6,11 @@ from typing import Any
 from .base import BaseThermostat
 from .generic_rest import RestThermostat
 from .tuya import TuyaThermostat
+from .tuya_cloud import TuyaCloudThermostat
 
 _REGISTRY = {
     "tuya": TuyaThermostat,
+    "tuya_cloud": TuyaCloudThermostat,
     "rest": RestThermostat,
 }
 
