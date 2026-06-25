@@ -5,6 +5,8 @@
   is read from and written to the `mode` enum (off/manual/auto), and the heating
   indicator comes from the valve `work_state` instead of assuming a switch. Mains
   thermostats with a real `switch` keep working as before.
+- With `log_level: debug`, log every device's full raw Tuya status (all codes and
+  values) each poll, to make device-specific mapping easy to inspect.
 
 ## 1.3.0
 - Control imported Tuya thermostats through the Tuya cloud (via Home Assistant's

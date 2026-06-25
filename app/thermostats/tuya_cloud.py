@@ -77,6 +77,9 @@ class TuyaCloudThermostat(BaseThermostat):
             self.state.available = False
             return
         self.state.available = True
+        # Full raw Tuya status (every code/value) — set log_level to debug to
+        # inspect exactly what the device reports.
+        log.debug("[%s] (%s) cloud status: %s", self.name, self.device_id, status)
         self.state.current_temperature = self._scale_in(status.get(self.codes["current"]))
         self.state.target_temperature = self._scale_in(status.get(self.codes["target"]))
 

@@ -1,3 +1,5 @@
+import logging
+
 import thermostats.tuya_cloud as drv
 from thermostats import factory
 
@@ -120,6 +122,14 @@ def test_set_mode_not_applied_when_send_fails(monkeypatch):
     d = drv.TuyaCloudThermostat({"id": "x", "device_id": "bf1", "type": "tuya_cloud"})
     d.set_hvac_mode("heat")
     assert d.state.hvac_mode != "heat"
+
+
+def test_refresh_logs_full_status_at_debug(monkeypatch, caplog):
+    d = _device(monkeypatch, {"mode": "off", "temp_set": 220, "temp_current": 254})
+    with caplog.at_level(logging.DEBUG, logger="wtm.driver.tuya_cloud"):
+        d.refresh()
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any("cloud status" in m and "temp_set" in m for m in msgs)
 
 
 def test_factory_creates_cloud_driver():
