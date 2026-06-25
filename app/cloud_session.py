@@ -70,9 +70,11 @@ class CloudSession:
         if not self._built:
             self._build()
         self._last_refresh = now
-        if self._managers and self._refresh_caches():
+        if not self._managers:
+            return  # no Tuya entry / config problem — nothing to refresh, don't rebuild
+        if self._refresh_caches():
             return
-        # Auth/refresh failure: rebuild from .storage once and retry.
+        # Auth/refresh failure with managers present: rebuild from .storage once.
         log.info("Tuya cloud refresh failed; rebuilding from the Home Assistant token")
         self._build()
         self._last_refresh = self._clock()

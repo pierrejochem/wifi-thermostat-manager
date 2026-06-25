@@ -1,4 +1,3 @@
-import pytest
 import ha_import
 import cloud_session
 
