@@ -46,6 +46,18 @@ def test_status_returns_device_status(monkeypatch):
     assert sess.status("nope") is None
 
 
+def test_device_codes_lists_full_catalog(monkeypatch):
+    dev = FakeDevice("d1", {"temp_set": 220})
+    dev.status_range = {"temp_set": object(), "work_state": object(), "mode": object()}
+    dev.function = {"temp_set": object(), "mode": object()}
+    sess, _ = _session(monkeypatch, [FakeManager([dev])])
+    cat = sess.device_codes("d1")
+    assert cat["status"] == ["temp_set"]
+    assert cat["status_range"] == ["mode", "temp_set", "work_state"]
+    assert cat["function"] == ["mode", "temp_set"]
+    assert sess.device_codes("nope") is None
+
+
 def test_status_throttles_cache_refresh(monkeypatch):
     mgr = FakeManager([FakeDevice("d1", {"x": 1})])
     sess, clock = _session(monkeypatch, [mgr])

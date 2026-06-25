@@ -10,6 +10,8 @@ class FakeSession:
         self.sent = []
     def status(self, device_id):
         return self._status
+    def device_codes(self, device_id):
+        return {"status": sorted(self._status or {}), "status_range": [], "function": []}
     def send(self, device_id, commands):
         self.sent.append((device_id, commands))
         return True

@@ -61,6 +61,7 @@ class TuyaCloudThermostat(BaseThermostat):
         self.codes: dict[str, str] = {**DEFAULT_CODES, **(definition.get("codes") or {})}
         # Learned on first refresh: does the device expose a separate switch?
         self._has_switch: bool | None = None
+        self._catalog_logged = False
 
     def _scale_in(self, raw: Any) -> float | None:
         try:
@@ -80,6 +81,11 @@ class TuyaCloudThermostat(BaseThermostat):
         # Full raw Tuya status (every code/value) — set log_level to debug to
         # inspect exactly what the device reports.
         log.debug("[%s] (%s) cloud status: %s", self.name, self.device_id, status)
+        # Once per device, also dump the full supported-code catalog (closer to
+        # what the Tuya developer platform shows than the live status subset).
+        if not self._catalog_logged and log.isEnabledFor(logging.DEBUG):
+            self._catalog_logged = True
+            log.debug("[%s] supported codes: %s", self.name, SESSION.device_codes(self.device_id))
         self.state.current_temperature = self._scale_in(status.get(self.codes["current"]))
         self.state.target_temperature = self._scale_in(status.get(self.codes["target"]))
 

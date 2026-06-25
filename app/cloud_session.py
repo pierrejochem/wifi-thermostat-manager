@@ -94,6 +94,27 @@ class CloudSession:
                 return None
             return dict(getattr(device, "status", None) or {})
 
+    def device_codes(self, device_id: str) -> dict[str, list[str]] | None:
+        """Return the device's full supported-code catalog (not just live status).
+
+        ``status`` are the codes that currently have a reported value;
+        ``status_range`` and ``function`` list every readable / writable code the
+        device supports — closer to what the Tuya developer platform shows.
+        """
+        with self._lock:
+            self._ensure_fresh()
+            mgr = self._owner.get(device_id)
+            if mgr is None:
+                return None
+            device = mgr.device_map.get(device_id)
+            if device is None:
+                return None
+            return {
+                "status": sorted(getattr(device, "status", None) or {}),
+                "status_range": sorted(getattr(device, "status_range", None) or {}),
+                "function": sorted(getattr(device, "function", None) or {}),
+            }
+
     def send(self, device_id: str, commands: list[dict[str, Any]]) -> bool:
         with self._lock:
             self._ensure_fresh()

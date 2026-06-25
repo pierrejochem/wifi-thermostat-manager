@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.2
+- Add full supported-code catalog to debug
+
 ## 1.3.1
 - Cloud control: correctly handle battery TRVs that have no `switch` code — on/off
   is read from and written to the `mode` enum (off/manual/auto), and the heating
