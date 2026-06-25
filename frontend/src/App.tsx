@@ -51,7 +51,7 @@ export default function App() {
 
   // A failed command snaps the optimistic value back (refresh) and tells the user.
   const onSetTemp = (id: string, t: number) =>
-    api.setTemperature(id, t).catch((e) => { showToast((e as Error).message); refresh(); });
+    api.setTemperature(id, t).then(refresh).catch((e) => { showToast((e as Error).message); refresh(); });
   const onSetMode = (id: string, m: string) =>
     api.setMode(id, m).then(refresh).catch((e) => { showToast((e as Error).message); refresh(); });
 

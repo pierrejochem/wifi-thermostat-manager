@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2
+- Stop the setpoint flickering back after a change: the dashboard holds your new
+  value until the backend confirms it (and refreshes right after sending),
+  instead of briefly snapping to the old value while the cloud catches up.
+
 ## 1.4.1
 - Surface failed commands instead of silently reverting: when the cloud rejects a
   setpoint or mode change, the dashboard now shows an error toast and the value

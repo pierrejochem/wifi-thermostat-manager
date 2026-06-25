@@ -29,6 +29,16 @@ export function ThermostatCard({ device, onSetTemp, onSetMode, onEdit }: Props) 
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const s = device.state;
+
+  // Hold the optimistic target until the backend reports it (or give up after a
+  // while), so it doesn't flicker back to the old value while the cloud catches up.
+  useEffect(() => {
+    if (pending == null) return;
+    if (s.target_temperature === pending) { setPending(null); return; }
+    const t = setTimeout(() => setPending(null), 8000);
+    return () => clearTimeout(t);
+  }, [pending, s.target_temperature]);
+
   const cur = s.current_temperature;
   const tgt = pending ?? s.target_temperature;
   const state = cardState(device);
@@ -42,8 +52,7 @@ export function ThermostatCard({ device, onSetTemp, onSetMode, onEdit }: Props) 
     setPending(next);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      onSetTemp(device.id, next);
-      setPending(null);
+      onSetTemp(device.id, next);   // pending stays until the backend confirms it
     }, 600);
   }
 
