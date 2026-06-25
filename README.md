@@ -76,8 +76,13 @@ The dashboard is a Vite + React + TypeScript app in `frontend/`.
 cd frontend && npm install && npm run dev
 ```
 
-Production build (also done in the Docker image): `cd frontend && npm run build`
-→ outputs to `app/static/dist`, which Flask serves.
+The built bundle (`app/static/dist`) is **committed** so the add-on image does
+not run a Node build on the device. After any UI change, rebuild and commit it:
+
+```bash
+cd frontend && npm run build      # writes app/static/dist
+git add app/static/dist           # commit the refreshed bundle
+```
 
 ## Support
 

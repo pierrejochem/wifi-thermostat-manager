@@ -1,6 +1,6 @@
-# Keep the Docker build context small and let `npm ci` install fresh deps.
-frontend/node_modules
-app/static/dist
+# The image ships the pre-built bundle (app/static/dist) and never builds the
+# frontend, so the Node source is not needed in the build context.
+frontend
 .git
 .github
 .superpowers

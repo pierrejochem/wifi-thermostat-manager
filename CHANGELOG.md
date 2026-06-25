@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2
+- Fix add-on image build failing on low-power hosts (e.g. Raspberry Pi): ship a
+  pre-built frontend bundle (`app/static/dist`) and drop the in-image Node build
+  stage, so the image build is just Python again. Rebuild the bundle with
+  `cd frontend && npm run build` before committing UI changes.
+
 ## 1.2.1
 - Import dialog: allow importing battery devices (TRVs) again — they are no
   longer excluded, just marked with a "battery" badge. Redesigned the device

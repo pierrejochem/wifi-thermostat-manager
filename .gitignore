@@ -13,7 +13,7 @@ env/
 *.egg-info/
 .eggs/
 build/
-dist/
+/dist/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -34,9 +34,9 @@ Thumbs.db
 .claude/plans
 docs/superpowers
 
-# Frontend
+# Frontend (node_modules ignored; the built bundle app/static/dist IS committed
+# so the add-on image does not need to run a Node build on the device)
 frontend/node_modules/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
-app/static/dist/
