@@ -67,6 +67,16 @@ def test_set_mode_off_and_heat(monkeypatch):
     assert drv.SESSION.sent[1] == ("bf1", [{"code": "switch", "value": True}])
 
 
+def test_set_mode_heat_not_applied_when_send_fails(monkeypatch):
+    class FailSession:
+        def status(self, device_id): return {}
+        def send(self, device_id, commands): return False
+    monkeypatch.setattr(drv, "SESSION", FailSession())
+    d = drv.TuyaCloudThermostat({"id": "x", "device_id": "bf1", "type": "tuya_cloud"})
+    d.set_hvac_mode("heat")
+    assert d.state.hvac_mode != "heat"
+
+
 def test_factory_creates_cloud_driver():
     obj = factory.create({"id": "x", "device_id": "bf1", "type": "tuya_cloud"})
     assert isinstance(obj, drv.TuyaCloudThermostat)

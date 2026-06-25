@@ -87,5 +87,5 @@ class TuyaCloudThermostat(BaseThermostat):
             if SESSION.send(self.device_id, [{"code": self.codes["switch"], "value": False}]):
                 self.state.hvac_mode = MODE_OFF
             return
-        SESSION.send(self.device_id, [{"code": self.codes["switch"], "value": True}])
-        self.state.hvac_mode = mode
+        if SESSION.send(self.device_id, [{"code": self.codes["switch"], "value": True}]):
+            self.state.hvac_mode = mode

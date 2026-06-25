@@ -113,10 +113,6 @@ def read_tuya_entries(path: str = CONFIG_ENTRIES_PATH) -> list[dict[str, Any]]:
 def read_tuya_entry(path: str = CONFIG_ENTRIES_PATH) -> dict[str, Any]:
     """Return the first usable Tuya config entry (used by the status check)."""
     return read_tuya_entries(path)[0]
-    raise TuyaEntryNotFound(
-        "No Tuya integration found in Home Assistant. Set up the official Tuya "
-        "integration first, then try importing again."
-    )
 
 
 def _build_manager(creds: dict[str, Any]):
