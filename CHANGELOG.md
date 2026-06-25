@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+- Cloud control: correctly handle battery TRVs that have no `switch` code — on/off
+  is read from and written to the `mode` enum (off/manual/auto), and the heating
+  indicator comes from the valve `work_state` instead of assuming a switch. Mains
+  thermostats with a real `switch` keep working as before.
+
 ## 1.3.0
 - Control imported Tuya thermostats through the Tuya cloud (via Home Assistant's
   existing Tuya credentials) instead of local tinytuya, which is unreachable for
