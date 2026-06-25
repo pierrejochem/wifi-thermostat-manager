@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import type { Thermostat, TypeSchemas } from "./types";
 import { TopBar } from "./components/TopBar";
@@ -28,20 +28,30 @@ export default function App() {
     return () => clearInterval(t);
   }, [refresh]);
 
+  const { avgTemp, heatingCount } = useMemo(() => {
+    const temps = devices
+      .map((d) => d.state.current_temperature)
+      .filter((t): t is number => t != null);
+    return {
+      avgTemp: temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : null,
+      heatingCount: devices.filter((d) => d.state.hvac_action === "heating").length,
+    };
+  }, [devices]);
+
   const closeModals = () => { setModal(null); setEditId(null); };
+  const openAdd = () => { setEditId(null); setModal("add"); };
 
   return (
     <>
-      <TopBar mqttConnected={mqtt}
-              onAdd={() => { setEditId(null); setModal("add"); }}
-              onImport={() => setModal("import")} />
+      <TopBar roomCount={devices.length} avgTemp={avgTemp} heatingCount={heatingCount}
+              mqttConnected={mqtt} onAdd={openAdd} onImport={() => setModal("import")} />
       <main>
         {devices.length === 0 ? (
           <section className="empty">
-            <div className="empty-dial" aria-hidden="true" />
-            <h2>No thermostats yet</h2>
-            <p>Add your first WiFi thermostat to start controlling it here and in Home Assistant.</p>
-            <button className="btn btn-primary" onClick={() => { setEditId(null); setModal("add"); }}>Add thermostat</button>
+            <div className="bar" aria-hidden="true" />
+            <h2>No rooms yet</h2>
+            <p>Import your Tuya thermostats from Home Assistant, or add one manually, to start controlling them here.</p>
+            <button className="btn btn-primary" onClick={openAdd}>Add room</button>
           </section>
         ) : (
           <section className="grid" aria-live="polite">

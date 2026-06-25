@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+- New dashboard design — "Heatmap of the home". Every room sits on a cold→hot
+  thermal scale bar (current marker + target tick), tiles tint by state
+  (ember when heating, cool when idle, dimmed when off), and the header shows
+  the home at a glance (average temperature, rooms calling for heat). Bricolage
+  Grotesque + Geist Mono typography; dark-first with a light variant.
+
 ## 1.3.3
 - Fix cloud commands failing with "token is expired": when a command fails,
   rebuild from Home Assistant's current token and retry once (the status path

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Dial } from "./Dial";
+import { ThermalBar } from "./ThermalBar";
 import type { Thermostat } from "../types";
 
 function fmt(n: number) {
@@ -12,6 +12,9 @@ function cardState(d: Thermostat) {
   if (s.hvac_mode === "off") return "off";
   return "idle";
 }
+const STATE_LABEL: Record<string, string> = {
+  heating: "Heating", idle: "Idle", off: "Off", unavailable: "Unavailable",
+};
 
 interface Props {
   device: Thermostat;
@@ -28,6 +31,8 @@ export function ThermostatCard({ device, onSetTemp, onSetMode, onEdit }: Props) 
   const s = device.state;
   const cur = s.current_temperature;
   const tgt = pending ?? s.target_temperature;
+  const state = cardState(device);
+  const stateClass = state === "heating" ? "s-heat" : state === "idle" ? "s-idle" : "";
 
   function nudge(direction: number) {
     const step = device.temp_step || 0.5;
@@ -43,37 +48,35 @@ export function ThermostatCard({ device, onSetTemp, onSetMode, onEdit }: Props) 
   }
 
   return (
-    <article className="card" data-state={cardState(device)} data-id={device.id}>
-      <div className="card-head">
-        <h3 className="card-name">{device.name}</h3>
-        <button className="icon-btn card-menu" aria-label="Edit thermostat"
+    <article className="tile" data-state={state} data-id={device.id}>
+      <div className="tile-head">
+        <h3 className="tile-name">{device.name}</h3>
+        <button className="icon-btn tile-menu" aria-label="Edit thermostat"
                 onClick={() => onEdit(device.id)}>&#8230;</button>
       </div>
-      <div className="dial">
-        <Dial current={cur} target={tgt} min={device.min_temp} max={device.max_temp} />
-        <div className="dial-center">
-          <div className="readout">
-            <span className="readout-num">{cur == null ? "--" : fmt(cur)}</span>
-            <span className="readout-unit">&deg;</span>
-          </div>
-          <div className="readout-label">current</div>
-        </div>
+      <div className={"tile-state " + stateClass}>{STATE_LABEL[state]}</div>
+
+      <div className="tile-temp">
+        <span className="tile-temp-v mono">{cur == null ? "--" : fmt(cur)}</span>
+        <span className="tile-temp-u">&deg;C</span>
       </div>
-      <div className="setpoint">
-        <button className="step-btn step-down" aria-label="Lower target" onClick={() => nudge(-1)}>&minus;</button>
-        <div className="setpoint-value">
-          <span className="target-num">{tgt == null ? "--" : fmt(tgt)}</span>
-          <span className="target-unit">&deg;C</span>
-          <span className="setpoint-label">target</span>
+      <div className="tile-cap">Current</div>
+
+      <ThermalBar current={cur} target={tgt} off={state === "off" || state === "unavailable"} />
+
+      <div className="tile-ctl">
+        <div className="setpoint">
+          <button className="step-btn step-down" aria-label="Lower target" onClick={() => nudge(-1)}>&minus;</button>
+          <span className="target-num mono">{tgt == null ? "--" : fmt(tgt)}&deg;</span>
+          <button className="step-btn step-up" aria-label="Raise target" onClick={() => nudge(+1)}>+</button>
         </div>
-        <button className="step-btn step-up" aria-label="Raise target" onClick={() => nudge(+1)}>+</button>
-      </div>
-      <div className="modes" role="group" aria-label="Mode">
-        {device.supported_modes.map((m) => (
-          <button key={m} className="mode-opt" data-mode={m}
-                  aria-pressed={m === s.hvac_mode}
-                  onClick={() => onSetMode(device.id, m)}>{m}</button>
-        ))}
+        <div className="modes" role="group" aria-label="Mode">
+          {device.supported_modes.map((m) => (
+            <button key={m} className="mode-opt" data-mode={m}
+                    aria-pressed={m === s.hvac_mode}
+                    onClick={() => onSetMode(device.id, m)}>{m}</button>
+          ))}
+        </div>
       </div>
     </article>
   );

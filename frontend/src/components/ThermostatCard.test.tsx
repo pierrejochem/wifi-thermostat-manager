@@ -20,7 +20,8 @@ it("shows the name and current temperature, and heating state", () => {
   );
   expect(screen.getByText("Hall")).toBeInTheDocument();
   expect(screen.getByText("20")).toBeInTheDocument();
-  expect(container.querySelector(".card")).toHaveAttribute("data-state", "heating");
+  expect(container.querySelector(".tile")).toHaveAttribute("data-state", "heating");
+  expect(screen.getByText("Heating")).toBeInTheDocument();
 });
 
 it("debounces the stepper and calls onSetTemp once", () => {
