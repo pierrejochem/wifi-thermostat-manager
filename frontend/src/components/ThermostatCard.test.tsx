@@ -1,5 +1,4 @@
 import { render, screen, act, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { ThermostatCard } from "./ThermostatCard";
 import type { Thermostat } from "../types";
