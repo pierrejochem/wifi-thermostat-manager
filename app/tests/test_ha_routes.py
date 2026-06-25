@@ -120,7 +120,7 @@ def test_import_adds_selected_skips_already_added(client, monkeypatch):
     assert body["errors"] == []
     # add_device called exactly once, with a proper tuya definition.
     assert len(added) == 1
-    assert added[0]["type"] == "tuya" and added[0]["device_id"] == "wk1"
+    assert added[0]["type"] == "tuya_cloud" and added[0]["device_id"] == "wk1"
 
 
 def test_import_includes_battery_device(client, monkeypatch):

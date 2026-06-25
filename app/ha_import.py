@@ -299,6 +299,19 @@ def _derive_tuya_config(device: Any) -> dict[str, Any]:
     if dps:
         out["dps"] = dps
 
+    # Cloud status is keyed by code, not DP number — resolve the role codes too.
+    present = set(code_to_dp)
+    if isinstance(status_range, dict):
+        present |= set(status_range)
+    codes: dict[str, str] = {}
+    for role, candidates in (("current", _CURRENT_CODES), ("target", _TARGET_CODES),
+                             ("mode", _MODE_CODES), ("switch", _POWER_CODES)):
+        match = next((c for c in candidates if c in present), None)
+        if match:
+            codes[role] = match
+    if codes:
+        out["codes"] = codes
+
     # Temperature scale + limits come from the target setpoint's spec.
     desc = _value_spec(status_range.get(tgt_code)) if (tgt_code and hasattr(status_range, "get")) else {}
     scale = desc.get("scale")
@@ -354,24 +367,20 @@ def _normalize(device: Any, already_ids: set[str]) -> dict[str, Any]:
 
 # Extra keys the import may derive from cloud metadata, copied into the
 # definition when present (otherwise the driver's defaults apply).
-_DERIVED_KEYS = ("dps", "min_temp", "max_temp", "temp_step")
+_DERIVED_KEYS = ("codes", "min_temp", "max_temp", "temp_step")
 
 
 def to_definition(item: dict[str, Any]) -> dict[str, Any]:
-    """Map a normalized import row to a Tuya thermostat definition.
+    """Map a normalized import row to a Tuya **cloud** thermostat definition.
 
-    The DP map, temperature divisor and limits are filled from the cloud
-    metadata when we could derive them; otherwise the Tuya driver's defaults
-    apply (divisor 2). ``CustomerDevice`` carries no protocol version, so that
-    stays at 3.3 — adjust in the edit dialog if a device needs 3.4/3.5.
+    Cloud control needs no local key / IP / protocol version / DP numbers — just
+    the device id, the temperature scale, and the status codes (with sensible
+    defaults applied by the driver).
     """
     definition: dict[str, Any] = {
-        "type": "tuya",
+        "type": "tuya_cloud",
         "name": item["name"],
         "device_id": item["device_id"],
-        "local_key": item["local_key"],
-        "address": item.get("address") or "Auto",
-        "version": "3.3",
         "temp_divisor": item.get("temp_divisor", 2),
     }
     for key in _DERIVED_KEYS:

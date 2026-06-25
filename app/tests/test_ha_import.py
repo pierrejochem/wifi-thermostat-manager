@@ -217,13 +217,14 @@ def test_normalize_address_default(tmp_path, monkeypatch):
     assert row["online"] is True
 
 
-def test_to_definition_defaults():
-    item = {"device_id": "wk1", "name": "Hall", "local_key": "k", "address": "Auto"}
+def test_to_definition_is_cloud_with_defaults():
+    item = {"device_id": "wk1", "name": "Hall", "temp_divisor": 2}
     definition = ha_import.to_definition(item)
-    assert definition == {
-        "type": "tuya", "name": "Hall", "device_id": "wk1", "local_key": "k",
-        "address": "Auto", "version": "3.3", "temp_divisor": 2,
-    }
+    assert definition["type"] == "tuya_cloud"
+    assert definition["device_id"] == "wk1"
+    assert definition["name"] == "Hall"
+    assert definition["temp_divisor"] == 2
+    assert "local_key" not in definition and "version" not in definition and "dps" not in definition
 
 
 def test_derive_dp_map_and_scale():
@@ -245,17 +246,24 @@ def test_normalize_includes_derived_config():
     assert row["temp_divisor"] == 10
 
 
-def test_to_definition_carries_derived_config():
+def test_to_definition_carries_codes_and_limits():
     item = {
-        "device_id": "trv1", "name": "TRV", "local_key": "k", "address": "Auto",
-        "dps": {"current": "24", "target": "16", "mode": "2"},
-        "temp_divisor": 10, "min_temp": 5, "max_temp": 35, "temp_step": 0.5,
+        "device_id": "trv1", "name": "TRV", "temp_divisor": 10,
+        "codes": {"current": "temp_current", "target": "temp_set", "mode": "mode"},
+        "min_temp": 5, "max_temp": 35, "temp_step": 0.5,
     }
     definition = ha_import.to_definition(item)
+    assert definition["type"] == "tuya_cloud"
+    assert definition["codes"]["target"] == "temp_set"
     assert definition["temp_divisor"] == 10
-    assert definition["dps"] == {"current": "24", "target": "16", "mode": "2"}
     assert definition["min_temp"] == 5 and definition["max_temp"] == 35
-    assert definition["version"] == "3.3"
+
+
+def test_derive_resolves_status_codes():
+    device = _fake_device("trv1", "wk", local_strategy=TRV_STRATEGY,
+                          status_range=TRV_STATUS_RANGE)
+    cfg = ha_import._derive_tuya_config(device)
+    assert cfg["codes"] == {"current": "temp_current", "target": "temp_set", "mode": "mode"}
 
 
 def test_derive_handles_no_metadata():
