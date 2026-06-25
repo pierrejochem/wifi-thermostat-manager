@@ -80,3 +80,36 @@ def delete(thermostat_id: str) -> bool:
         _write(new_items)
         log.info("Deleted thermostat %s", thermostat_id)
         return True
+
+
+_CLOUD_CODES = {
+    "current": "temp_current", "target": "temp_set",
+    "mode": "mode", "switch": "switch",
+}
+_LOCAL_ONLY_KEYS = ("local_key", "address", "version", "dps")
+
+
+def migrate_tuya_to_cloud() -> int:
+    """Convert stored local ``tuya`` devices to cloud-controlled ``tuya_cloud``.
+
+    Local control is unreliable for many Tuya thermostats; cloud control works
+    through Home Assistant's credentials. Existing devices are converted in
+    place (type changed, default status codes applied, ``temp_divisor`` kept,
+    local-only fields dropped). Returns the number migrated; idempotent.
+    """
+    with _lock:
+        items = _read()
+        migrated = 0
+        for item in items:
+            if item.get("type") != "tuya":
+                continue
+            item["type"] = "tuya_cloud"
+            item.setdefault("temp_divisor", 2)
+            item["codes"] = {**_CLOUD_CODES, **(item.get("codes") or {})}
+            for key in _LOCAL_ONLY_KEYS:
+                item.pop(key, None)
+            migrated += 1
+        if migrated:
+            _write(items)
+            log.info("Migrated %d Tuya device(s) to cloud control", migrated)
+        return migrated

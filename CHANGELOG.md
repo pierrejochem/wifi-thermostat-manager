@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+- Control imported Tuya thermostats through the Tuya cloud (via Home Assistant's
+  existing Tuya credentials) instead of local tinytuya, which is unreachable for
+  many devices. Existing imported Tuya devices migrate to cloud control
+  automatically on startup.
+
 ## 1.2.2
 - Fix add-on image build failing on low-power hosts (e.g. Raspberry Pi): ship a
   pre-built frontend bundle (`app/static/dist`) and drop the in-image Node build

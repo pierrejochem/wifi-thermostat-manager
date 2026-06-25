@@ -72,6 +72,8 @@ mqtt_bridge.connect()
 manager = ThermostatManager(
     mqtt_bridge, poll_interval=int(os.environ.get("POLL_INTERVAL", 30))
 )
+import config_store  # noqa: E402
+config_store.migrate_tuya_to_cloud()   # local tuya -> cloud, before devices load
 manager.load_from_store()
 manager.start()
 
