@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
 import { ImportModal } from "./ImportModal";
 import { api } from "../api";
@@ -9,7 +9,7 @@ function dev(over: Partial<HaDevice>): HaDevice {
            battery: false, category: "wk", ...over };
 }
 
-it("disables battery and already-added rows", async () => {
+function mockDevices() {
   vi.spyOn(api, "haDevices").mockResolvedValue({
     devices: [
       dev({ device_id: "a", name: "Mains" }),
@@ -18,11 +18,37 @@ it("disables battery and already-added rows", async () => {
     ],
     seen_categories: { wk: 3 }, total: 3, homes: 1,
   });
+}
+
+it("allows selecting battery devices; only already-added rows are locked", async () => {
+  mockDevices();
   render(<ImportModal onClose={() => {}} onImported={() => {}} />);
-  const boxes = await screen.findAllByRole("checkbox");
-  // order matches devices: Mains enabled, TRV disabled, Old disabled
-  expect(boxes[0]).toBeEnabled();
-  expect(boxes[1]).toBeDisabled();
-  expect(boxes[2]).toBeDisabled();
-  await waitFor(() => expect(screen.getByText("battery · use HA Tuya")).toBeInTheDocument());
+  // Battery device is now selectable; already-added is disabled.
+  expect(await screen.findByLabelText("TRV")).toBeEnabled();
+  expect(screen.getByLabelText("Mains")).toBeEnabled();
+  expect(screen.getByLabelText("Old")).toBeDisabled();
+  // Battery badge still shown for information.
+  await waitFor(() => expect(screen.getByText("battery")).toBeInTheDocument());
+});
+
+it("select-all checks every importable device (not already-added)", async () => {
+  mockDevices();
+  render(<ImportModal onClose={() => {}} onImported={() => {}} />);
+  const selectAll = await screen.findByLabelText("Select all");
+  fireEvent.click(selectAll);
+  expect((screen.getByLabelText("Mains") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("TRV") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Old") as HTMLInputElement).checked).toBe(false);
+  // Toggling again clears them.
+  fireEvent.click(selectAll);
+  expect((screen.getByLabelText("Mains") as HTMLInputElement).checked).toBe(false);
+});
+
+it("imports the selected devices via the API", async () => {
+  mockDevices();
+  const haImport = vi.spyOn(api, "haImport").mockResolvedValue({ imported: [], skipped: [], errors: [] });
+  render(<ImportModal onClose={() => {}} onImported={() => {}} />);
+  fireEvent.click(await screen.findByLabelText("TRV"));
+  fireEvent.click(screen.getByRole("button", { name: /import selected/i }));
+  await waitFor(() => expect(haImport).toHaveBeenCalledWith(["b"]));
 });

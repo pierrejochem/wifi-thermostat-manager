@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+- Import dialog: allow importing battery devices (TRVs) again — they are no
+  longer excluded, just marked with a "battery" badge. Redesigned the device
+  list as a table with a select-all checkbox and online/offline status column.
+
 ## 1.2.0
 - Rebuild the dashboard as a Vite + React + TypeScript app (same look and
   behavior). Built in a multi-stage Docker image; the runtime image is

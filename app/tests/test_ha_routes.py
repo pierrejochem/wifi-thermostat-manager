@@ -123,7 +123,8 @@ def test_import_adds_selected_skips_already_added(client, monkeypatch):
     assert added[0]["type"] == "tuya" and added[0]["device_id"] == "wk1"
 
 
-def test_import_skips_battery_device(client, monkeypatch):
+def test_import_includes_battery_device(client, monkeypatch):
+    # Battery devices are importable again (only already-added are skipped).
     monkeypatch.setattr(ha_import, "fetch_thermostats",
                         lambda **k: [_row("wk1"), _row("trv1", battery=True)])
     added = []
@@ -131,9 +132,9 @@ def test_import_skips_battery_device(client, monkeypatch):
                         lambda d: added.append(d) or {"id": "x", "name": d["name"]})
     res = client.post("/api/ha/import", json={"device_ids": ["wk1", "trv1"]})
     body = res.get_json()
-    assert [d["device_id"] for d in body["imported"]] == ["wk1"]
-    assert body["skipped"] == ["trv1"]
-    assert len(added) == 1 and added[0]["device_id"] == "wk1"
+    assert [d["device_id"] for d in body["imported"]] == ["wk1", "trv1"]
+    assert body["skipped"] == []
+    assert len(added) == 2
 
 
 def test_import_unknown_device_errors(client, monkeypatch):
