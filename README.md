@@ -65,6 +65,20 @@ substituted at call time, e.g.
 - Thermostat definitions persist in `/data` and survive restarts/updates.
 - This add-on never uses the Tuya cloud; Tuya devices are controlled locally.
 
+## Frontend development
+
+The dashboard is a Vite + React + TypeScript app in `frontend/`.
+
+```bash
+# backend (Flask) on :8099
+./dev/run-dev.sh
+# frontend dev server on :5173 with HMR, proxies /api to Flask
+cd frontend && npm install && npm run dev
+```
+
+Production build (also done in the Docker image): `cd frontend && npm run build`
+→ outputs to `app/static/dist`, which Flask serves.
+
 ## Support
 
 This is provided as-is. Tuya data-point numbers vary between models — if a

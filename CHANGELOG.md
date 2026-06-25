@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+- Rebuild the dashboard as a Vite + React + TypeScript app (same look and
+  behavior). Built in a multi-stage Docker image; the runtime image is
+  unchanged in size (no Node).
+
 ## 1.1.8
 - Keep only locally-controllable thermostats: battery devices (radiator TRVs)
   are detected by their `battery_*` status code and shown as non-importable
