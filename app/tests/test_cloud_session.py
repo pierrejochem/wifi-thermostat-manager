@@ -78,6 +78,24 @@ def test_send_routes_to_owning_manager(monkeypatch):
     assert m1.sent == []
 
 
+def test_send_retries_after_token_refresh(monkeypatch):
+    # First manager's command fails (expired token); rebuilding from .storage
+    # yields a fresh manager whose command succeeds.
+    stale = FakeManager([FakeDevice("d1", {})])
+    def _expired(device_id, commands):
+        raise RuntimeError("network error:(1010) token is expired")
+    stale.send_commands = _expired
+    fresh = FakeManager([FakeDevice("d1", {})])
+
+    monkeypatch.setattr(ha_import, "read_tuya_entries", lambda path: [{"terminal_id": "t"}])
+    managers = iter([stale, fresh])   # initial build -> stale; rebuild -> fresh
+    monkeypatch.setattr(ha_import, "_build_manager", lambda creds: next(managers))
+    sess = cloud_session.CloudSession(config_entries_path="/x")
+
+    assert sess.send("d1", [{"code": "temp_set", "value": 220}]) is True
+    assert fresh.sent == [("d1", [{"code": "temp_set", "value": 220}])]
+
+
 def test_send_unknown_device_returns_false(monkeypatch):
     sess, _ = _session(monkeypatch, [FakeManager([FakeDevice("a", {})])])
     assert sess.send("ghost", [{"code": "x", "value": 1}]) is False

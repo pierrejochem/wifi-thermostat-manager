@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3
+- Fix cloud commands failing with "token is expired": when a command fails,
+  rebuild from Home Assistant's current token and retry once (the status path
+  already self-healed; commands now do too).
+
 ## 1.3.2
 - Add full supported-code catalog to debug
 

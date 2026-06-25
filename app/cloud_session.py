@@ -122,9 +122,28 @@ class CloudSession:
         if mgr is None:
             log.warning("Tuya cloud: unknown device %s", device_id)
             return False
+        if self._try_send(mgr, device_id, commands):
+            return True
+        # The command failed — most often the cached token expired/rotated since
+        # the last cache refresh (HA refreshes it in .storage). Rebuild from the
+        # current stored token and retry the command once.
+        log.info("Tuya cloud: rebuilding from the Home Assistant token after a "
+                 "command failure, then retrying")
+        with self._lock:
+            self._build()
+            self._last_refresh = self._clock()
+            self._refresh_caches()
+            mgr = self._owner.get(device_id)
+        if mgr is None:
+            log.error("Tuya cloud: device %s missing after token refresh", device_id)
+            return False
+        return self._try_send(mgr, device_id, commands)
+
+    @staticmethod
+    def _try_send(mgr, device_id: str, commands: list[dict[str, Any]]) -> bool:
         try:
             mgr.send_commands(device_id, commands)
             return True
         except Exception as err:  # noqa: BLE001
-            log.error("Tuya cloud command failed for %s: %s", device_id, err)
+            log.warning("Tuya cloud command failed for %s: %s", device_id, err)
             return False
