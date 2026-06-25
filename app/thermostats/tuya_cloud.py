@@ -43,8 +43,9 @@ _AUTO_MODES = {"auto", "program", "smart", "auto_program"}
 _HEATING_STATES = {"open", "opened", "opening", "heating", "heat", "heat_state"}
 _IDLE_STATES = {"close", "closed", "closing", "idle"}
 
-# Value written to the ``mode`` code to turn a switchless device on (heat).
-_MODE_ON_VALUE = "manual"
+# Values written to the ``mode`` code per HVAC mode.
+_MODE_ON_VALUE = "manual"    # heat
+_MODE_AUTO_VALUE = "auto"    # scheduled
 _MODE_OFF_VALUE = "off"
 
 # One cloud session shared by every cloud device in the process.
@@ -59,6 +60,10 @@ class TuyaCloudThermostat(BaseThermostat):
         self.device_id: str = definition["device_id"]
         self.temp_divisor: float = float(definition.get("temp_divisor", 2))
         self.codes: dict[str, str] = {**DEFAULT_CODES, **(definition.get("codes") or {})}
+        # Tuya thermostats expose a scheduled (auto) mode alongside heat; offer it
+        # unless the definition pins an explicit mode list.
+        if "supported_modes" not in definition:
+            self.supported_modes = [MODE_OFF, MODE_HEAT, MODE_AUTO]
         # Learned on first refresh: does the device expose a separate switch?
         self._has_switch: bool | None = None
         self._catalog_logged = False
@@ -129,16 +134,24 @@ class TuyaCloudThermostat(BaseThermostat):
             self.state.target_temperature = temperature
         return ok
 
-    def _power_command(self, on: bool) -> dict[str, Any]:
-        """Build the on/off command for this device's on/off convention."""
+    def _mode_commands(self, mode: str) -> list[dict[str, Any]]:
+        """Build the command(s) for a target HVAC mode.
+
+        Switchless devices (TRVs) carry on/off/auto in the ``mode`` enum. Devices
+        with a ``switch`` use it for power and the ``mode`` code for heat vs auto.
+        """
+        if mode == MODE_OFF:
+            if self._has_switch:
+                return [{"code": self.codes["switch"], "value": False}]
+            return [{"code": self.codes["mode"], "value": _MODE_OFF_VALUE}]
+        mode_val = _MODE_AUTO_VALUE if mode == MODE_AUTO else _MODE_ON_VALUE
         if self._has_switch:
-            return {"code": self.codes["switch"], "value": on}
-        return {"code": self.codes["mode"],
-                "value": _MODE_ON_VALUE if on else _MODE_OFF_VALUE}
+            return [{"code": self.codes["switch"], "value": True},
+                    {"code": self.codes["mode"], "value": mode_val}]
+        return [{"code": self.codes["mode"], "value": mode_val}]
 
     def set_hvac_mode(self, mode: str) -> bool:
-        on = mode != MODE_OFF
-        ok = SESSION.send(self.device_id, [self._power_command(on)])
+        ok = SESSION.send(self.device_id, self._mode_commands(mode))
         if ok:
             self.state.hvac_mode = mode
         return ok

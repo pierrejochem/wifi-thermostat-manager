@@ -57,8 +57,10 @@ def test_switch_device_commands_use_switch(monkeypatch):
     d.refresh()                       # learns _has_switch = True
     d.set_hvac_mode("off")
     d.set_hvac_mode("heat")
+    d.set_hvac_mode("auto")
     assert drv.SESSION.sent[0] == ("bf1", [{"code": "switch", "value": False}])
-    assert drv.SESSION.sent[1] == ("bf1", [{"code": "switch", "value": True}])
+    assert drv.SESSION.sent[1] == ("bf1", [{"code": "switch", "value": True}, {"code": "mode", "value": "manual"}])
+    assert drv.SESSION.sent[2] == ("bf1", [{"code": "switch", "value": True}, {"code": "mode", "value": "auto"}])
 
 
 # --- battery TRV: no `switch`; mode enum carries off/manual/auto ------------
@@ -96,9 +98,16 @@ def test_trv_commands_use_mode(monkeypatch):
     d = _device(monkeypatch, {"mode": "off"})   # no switch present
     d.refresh()                                  # learns _has_switch = False
     d.set_hvac_mode("heat")
+    d.set_hvac_mode("auto")
     d.set_hvac_mode("off")
     assert drv.SESSION.sent[0] == ("bf1", [{"code": "mode", "value": "manual"}])
-    assert drv.SESSION.sent[1] == ("bf1", [{"code": "mode", "value": "off"}])
+    assert drv.SESSION.sent[1] == ("bf1", [{"code": "mode", "value": "auto"}])
+    assert drv.SESSION.sent[2] == ("bf1", [{"code": "mode", "value": "off"}])
+
+
+def test_cloud_device_offers_auto_mode():
+    d = drv.TuyaCloudThermostat({"id": "x", "device_id": "bf1", "type": "tuya_cloud"})
+    assert d.supported_modes == ["off", "heat", "auto"]
 
 
 # --- common -----------------------------------------------------------------
