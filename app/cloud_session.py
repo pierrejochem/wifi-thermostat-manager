@@ -13,6 +13,7 @@ unavailable.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -114,6 +115,35 @@ class CloudSession:
                 "status_range": sorted(getattr(device, "status_range", None) or {}),
                 "function": sorted(getattr(device, "function", None) or {}),
             }
+
+    def value_spec(self, device_id: str, code: str) -> dict[str, Any] | None:
+        """Parsed value spec (e.g. ``{"range": [...]}``) for a device's code.
+
+        Reads the code's ``values`` JSON from the device's ``function`` (writable)
+        first, then ``status_range``. Returns None if unavailable.
+        """
+        with self._lock:
+            self._ensure_fresh()
+            mgr = self._owner.get(device_id)
+            if mgr is None:
+                return None
+            device = mgr.device_map.get(device_id)
+            if device is None:
+                return None
+            for attr in ("function", "status_range"):
+                coll = getattr(device, attr, None)
+                entry = coll.get(code) if isinstance(coll, dict) else None
+                raw = getattr(entry, "values", None) if entry is not None else None
+                if isinstance(raw, dict):
+                    return raw
+                if isinstance(raw, str) and raw:
+                    try:
+                        parsed = json.loads(raw)
+                    except ValueError:
+                        continue
+                    if isinstance(parsed, dict):
+                        return parsed
+        return None
 
     def send(self, device_id: str, commands: list[dict[str, Any]]) -> bool:
         with self._lock:

@@ -5,20 +5,23 @@ from thermostats import factory
 
 
 class FakeSession:
-    def __init__(self, status=None):
+    def __init__(self, status=None, mode_range=None):
         self._status = status
+        self._mode_range = mode_range
         self.sent = []
     def status(self, device_id):
         return self._status
     def device_codes(self, device_id):
         return {"status": sorted(self._status or {}), "status_range": [], "function": []}
+    def value_spec(self, device_id, code):
+        return {"range": self._mode_range} if self._mode_range else None
     def send(self, device_id, commands):
         self.sent.append((device_id, commands))
         return True
 
 
-def _device(monkeypatch, status, definition=None):
-    monkeypatch.setattr(drv, "SESSION", FakeSession(status))
+def _device(monkeypatch, status, definition=None, mode_range=None):
+    monkeypatch.setattr(drv, "SESSION", FakeSession(status, mode_range))
     definition = definition or {
         "id": "x", "device_id": "bf1", "type": "tuya_cloud",
         "temp_divisor": 10, "min_temp": 5, "max_temp": 35, "temp_step": 0.5,
@@ -106,7 +109,21 @@ def test_trv_commands_use_mode(monkeypatch):
 
 
 def test_cloud_device_offers_auto_mode():
+    # No metadata yet -> safe default offers all three.
     d = drv.TuyaCloudThermostat({"id": "x", "device_id": "bf1", "type": "tuya_cloud"})
+    assert d.supported_modes == ["off", "heat", "auto"]
+
+
+def test_modes_derived_no_off_for_trv(monkeypatch):
+    # mode range {auto, manual}, no switch -> the device has no Off.
+    d = _device(monkeypatch, {"mode": "manual"}, mode_range=["auto", "manual"])
+    d.refresh()
+    assert d.supported_modes == ["heat", "auto"]
+
+
+def test_modes_derived_with_switch_includes_off(monkeypatch):
+    d = _device(monkeypatch, {"switch": True, "mode": "manual"}, mode_range=["auto", "manual"])
+    d.refresh()
     assert d.supported_modes == ["off", "heat", "auto"]
 
 

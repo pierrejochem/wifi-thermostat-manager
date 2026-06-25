@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import ha_import
 import cloud_session
 
@@ -44,6 +46,14 @@ def test_status_returns_device_status(monkeypatch):
     sess, _ = _session(monkeypatch, [mgr])
     assert sess.status("d1") == {"temp_set": 220}
     assert sess.status("nope") is None
+
+
+def test_value_spec_parses_mode_range(monkeypatch):
+    dev = FakeDevice("d1", {})
+    dev.function = {"mode": SimpleNamespace(values='{"range":["auto","manual"]}')}
+    sess, _ = _session(monkeypatch, [FakeManager([dev])])
+    assert sess.value_spec("d1", "mode") == {"range": ["auto", "manual"]}
+    assert sess.value_spec("d1", "nope") is None
 
 
 def test_device_codes_lists_full_catalog(monkeypatch):

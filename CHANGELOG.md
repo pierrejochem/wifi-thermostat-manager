@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.3
+- Only offer the modes a device actually supports: read each thermostat's `mode`
+  range and show Off only when the device has a power switch or an `off` value.
+  Many TRVs allow just `auto`/`manual` (no off), so trying to turn them off was
+  being rejected — Off no longer appears for those; Heat/Auto work.
+
 ## 1.4.2
 - Stop the setpoint flickering back after a change: the dashboard holds your new
   value until the backend confirms it (and refreshes right after sending),

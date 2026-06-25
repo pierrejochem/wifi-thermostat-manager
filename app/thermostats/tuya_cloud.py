@@ -60,12 +60,13 @@ class TuyaCloudThermostat(BaseThermostat):
         self.device_id: str = definition["device_id"]
         self.temp_divisor: float = float(definition.get("temp_divisor", 2))
         self.codes: dict[str, str] = {**DEFAULT_CODES, **(definition.get("codes") or {})}
-        # Tuya thermostats expose a scheduled (auto) mode alongside heat; offer it
-        # unless the definition pins an explicit mode list.
-        if "supported_modes" not in definition:
+        self._modes_pinned = "supported_modes" in definition
+        # Default until we learn the device's real mode range on first refresh.
+        if not self._modes_pinned:
             self.supported_modes = [MODE_OFF, MODE_HEAT, MODE_AUTO]
         # Learned on first refresh: does the device expose a separate switch?
         self._has_switch: bool | None = None
+        self._modes_derived = False
         self._catalog_logged = False
 
     def _scale_in(self, raw: Any) -> float | None:
@@ -104,6 +105,10 @@ class TuyaCloudThermostat(BaseThermostat):
             self._has_switch = False
             off = raw_mode in _OFF_MODES
 
+        if not self._modes_derived:
+            self._modes_derived = True
+            self._derive_supported_modes()
+
         if off:
             self.state.hvac_mode = MODE_OFF
         elif raw_mode in _AUTO_MODES and MODE_AUTO in self.supported_modes:
@@ -125,6 +130,28 @@ class TuyaCloudThermostat(BaseThermostat):
         if cur is not None and tgt is not None:
             return "heating" if cur < tgt else "idle"
         return "idle"
+
+    def _derive_supported_modes(self) -> None:
+        """Set supported_modes from the device's real mode range (and switch).
+
+        Many TRVs expose only ``{auto, manual}`` with no off — so we offer Off
+        only when the device has a power switch or an ``off`` mode value. "manual"
+        maps to Heat, "auto"/"program" to Auto.
+        """
+        if self._modes_pinned:
+            return
+        spec = SESSION.value_spec(self.device_id, self.codes["mode"])
+        rng = spec.get("range") if isinstance(spec, dict) else None
+        if not rng and not self._has_switch:
+            return  # unknown range and no switch — keep the safe default
+        rng = [str(v).lower() for v in (rng or [])]
+        modes: list[str] = []
+        if self._has_switch or "off" in rng:
+            modes.append(MODE_OFF)
+        modes.append(MODE_HEAT)
+        if not rng or "auto" in rng or "program" in rng:
+            modes.append(MODE_AUTO)
+        self.supported_modes = modes
 
     def set_target_temperature(self, temperature: float) -> bool:
         temperature = self.clamp(temperature)
