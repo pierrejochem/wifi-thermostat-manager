@@ -1,0 +1,11 @@
+# Keep the Docker build context small and let `npm ci` install fresh deps.
+frontend/node_modules
+app/static/dist
+.git
+.github
+.superpowers
+docs/superpowers
+dev/.venv
+dev/data
+**/__pycache__
+*.pyc

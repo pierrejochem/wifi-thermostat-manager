@@ -9,7 +9,7 @@ import logging
 import os
 import signal
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, request, send_from_directory
 
 from manager import ThermostatManager
 from mqtt_client import MqttBridge
@@ -75,13 +75,15 @@ manager = ThermostatManager(
 manager.load_from_store()
 manager.start()
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+DIST_DIR = os.path.join(os.path.dirname(__file__), "static", "dist")
+app = Flask(__name__, static_folder=DIST_DIR, static_url_path="")
+app.config["DIST_DIR"] = DIST_DIR
 
 
 # --- pages -----------------------------------------------------------------
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return send_from_directory(app.config["DIST_DIR"], "index.html")
 
 
 # --- API -------------------------------------------------------------------
