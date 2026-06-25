@@ -186,7 +186,7 @@ def _already_added_tuya_ids() -> set[str]:
     return {
         d["device_id"]
         for d in config_store.list_all()
-        if d.get("type") == "tuya" and d.get("device_id")
+        if d.get("type") in ("tuya", "tuya_cloud") and d.get("device_id")
     }
 
 
