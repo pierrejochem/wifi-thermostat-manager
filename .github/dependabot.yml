@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # Python runtime deps installed into the add-on image (see Dockerfile).
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      python-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Vite/React dashboard. The bundle is built locally and committed to
+  # app/static/dist, so remember to rebuild after merging these.
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
