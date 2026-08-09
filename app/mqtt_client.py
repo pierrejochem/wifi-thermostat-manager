@@ -46,7 +46,9 @@ class MqttBridge:
         self.connected = False
         self._command_handler: CommandHandler | None = None
 
-        self._client = mqtt.Client(client_id="wifi-thermostat-manager")
+        self._client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION2, client_id="wifi-thermostat-manager"
+        )
         if username:
             self._client.username_pw_set(username, password)
         self._client.on_connect = self._on_connect
@@ -77,9 +79,10 @@ class MqttBridge:
     def set_command_handler(self, handler: CommandHandler) -> None:
         self._command_handler = handler
 
-    def _on_connect(self, client, _userdata, _flags, rc):  # noqa: ANN001
-        if rc != 0:
-            log.error("MQTT connect refused (code %s)", rc)
+    def _on_connect(self, client, _userdata, _flags, reason_code, _properties=None):  # noqa: ANN001
+        # paho 2.x callback API v2: ``reason_code`` is a ReasonCode, not an int.
+        if reason_code.is_failure:
+            log.error("MQTT connect refused (%s)", reason_code)
             return
         self.connected = True
         log.info("MQTT connected")

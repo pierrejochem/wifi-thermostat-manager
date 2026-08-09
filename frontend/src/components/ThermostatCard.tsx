@@ -25,7 +25,7 @@ interface Props {
 
 export function ThermostatCard({ device, onSetTemp, onSetMode, onEdit }: Props) {
   const [pending, setPending] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const s = device.state;
