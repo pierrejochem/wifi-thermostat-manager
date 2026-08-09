@@ -1,5 +1,10 @@
 # WiFi Thermostat Manager — Documentation
 
+Configuration reference for the [WiFi Thermostat Manager](README.md) Home
+Assistant add-on: add-on options, importing from the Tuya integration, the MQTT
+topic layout, and Tuya data-point (DP) mapping for Moes, Beca, Avatto, BHT-002
+and BAC-002 thermostats.
+
 ![Dashboard](https://raw.githubusercontent.com/pierrejochem/wifi-thermostat-manager/main/images/screenshot.png)
 
 ## Configuration options
