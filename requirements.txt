@@ -7,4 +7,4 @@ requests==2.34.2
 # API, which 2.x only deprecates (DeprecationWarning) rather than removes — so
 # our 2.1.0 pin above satisfies it. If a future paho drops v1 outright, this
 # has to stay behind until the SDK migrates.
-tuya-device-sharing-sdk==0.2.14
+tuya-device-sharing-sdk==0.2.15
